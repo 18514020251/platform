@@ -1,0 +1,9 @@
+     A       IIIII
+    A A        I
+   AAAAA       I
+  A     A      I
+ A       A   IIIII
+
+:: AI Platform ::        (v${application.version:1.0.0})
+:: Spring Boot ::        (v${spring-boot.version})
+:: Environment ::        ${spring.profiles.active:dev}
