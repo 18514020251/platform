@@ -10,20 +10,24 @@ import java.io.Serializable;
 
 /**
  * 统一返回格式
+ *
+ * @param <T> 返回数据类型
  */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Result<T extends Serializable> implements Serializable {
+public class Result<T> implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     private int code;
     private String message;
+
+    @SuppressWarnings("java:S1948")
     private T data;
 
-    public static <T extends Serializable> Result<T> success() {
+    public static <T> Result<T> success() {
         return new Result<>(
                 ErrorCode.SUCCESS.getCode(),
                 ErrorCode.SUCCESS.getMessage(),
@@ -31,7 +35,7 @@ public class Result<T extends Serializable> implements Serializable {
         );
     }
 
-    public static <T extends Serializable> Result<T> success(T data) {
+    public static <T> Result<T> success(T data) {
         return new Result<>(
                 ErrorCode.SUCCESS.getCode(),
                 ErrorCode.SUCCESS.getMessage(),
@@ -39,7 +43,15 @@ public class Result<T extends Serializable> implements Serializable {
         );
     }
 
-    public static <T extends Serializable> Result<T> fail(ErrorCode errorCode) {
+    public static Result<Void> successVoid() {
+        return new Result<>(
+                ErrorCode.SUCCESS.getCode(),
+                ErrorCode.SUCCESS.getMessage(),
+                null
+        );
+    }
+
+    public static <T> Result<T> fail(ErrorCode errorCode) {
         return new Result<>(
                 errorCode.getCode(),
                 errorCode.getMessage(),
@@ -47,7 +59,7 @@ public class Result<T extends Serializable> implements Serializable {
         );
     }
 
-    public static <T extends Serializable> Result<T> fail(ErrorCode errorCode, String message) {
+    public static <T> Result<T> fail(ErrorCode errorCode, String message) {
         return new Result<>(
                 errorCode.getCode(),
                 message,
@@ -55,7 +67,7 @@ public class Result<T extends Serializable> implements Serializable {
         );
     }
 
-    public static <T extends Serializable> Result<T> fail(int code, String message) {
+    public static <T> Result<T> fail(int code, String message) {
         return new Result<>(code, message, null);
     }
 }

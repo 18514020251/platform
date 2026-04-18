@@ -35,6 +35,7 @@
     <properties>
         <java.version>17</java.version>
         <maven.compiler.release>17</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring.boot.version>3.3.5</spring.boot.version>
         <spring.cloud.alibaba.version>2023.0.1.2</spring.cloud.alibaba.version>
         <spring.cloud.version>2023.0.3</spring.cloud.version>
@@ -48,7 +49,9 @@
         <mongodb.driver.version>5.1.2</mongodb.driver.version>
         <langchain4j.version>0.35.0</langchain4j.version>
         <elasticsearch.java.version>8.15.2</elasticsearch.java.version>
+        <springdoc.version>2.6.0</springdoc.version>
     </properties>
+
 
     <dependencyManagement>
         <dependencies>
@@ -132,6 +135,12 @@
                 <groupId>com.xcvk.platform</groupId>
                 <artifactId>platform-id-starter</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
