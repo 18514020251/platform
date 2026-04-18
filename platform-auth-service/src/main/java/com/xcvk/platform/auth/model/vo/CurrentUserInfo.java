@@ -1,21 +1,21 @@
-package com.xcvk.platform.auth.module.vo;
+package com.xcvk.platform.auth.model.vo;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 
 /**
- * 登录响应
+ * 当前登录用户信息
  *
  * @author Programmer
  * @version 1.0
- * @date 2026-04-18 10:48
+ * @date 2026-04-18 10:55
  */
-public record LoginResponse(
-        String token,
+public record CurrentUserInfo(
         Long userId,
         String username,
         String realName,
+        String deptName,
         List<String> roleCodes
 ) implements Serializable {
 

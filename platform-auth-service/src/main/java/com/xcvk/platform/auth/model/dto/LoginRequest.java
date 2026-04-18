@@ -1,4 +1,4 @@
-package com.xcvk.platform.auth.module.dto;
+package com.xcvk.platform.auth.model.dto;
 
 import jakarta.validation.constraints.NotBlank;
 

@@ -42,7 +42,7 @@
 
         <sa-token.version>1.39.0</sa-token.version>
         <hutool.version>5.8.34</hutool.version>
-        <mybatis-plus.version>3.5.7</mybatis-plus.version>
+        <mybatis-plus.version>3.5.11</mybatis-plus.version>
         <mysql.version>8.4.0</mysql.version>
         <minio.version>8.5.12</minio.version>
         <jjwt.version>0.12.6</jjwt.version>

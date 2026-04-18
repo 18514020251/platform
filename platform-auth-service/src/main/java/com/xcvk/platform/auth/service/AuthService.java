@@ -1,8 +1,8 @@
 package com.xcvk.platform.auth.service;
 
-import com.xcvk.platform.auth.module.dto.LoginRequest;
-import com.xcvk.platform.auth.module.vo.CurrentUserInfo;
-import com.xcvk.platform.auth.module.vo.LoginResponse;
+import com.xcvk.platform.auth.model.dto.LoginRequest;
+import com.xcvk.platform.auth.model.vo.CurrentUserInfo;
+import com.xcvk.platform.auth.model.vo.LoginResponse;
 
 /**
  * @author Programmer

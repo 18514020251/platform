@@ -1,8 +1,8 @@
 package com.xcvk.platform.auth.controller;
 
-import com.xcvk.platform.auth.module.dto.LoginRequest;
-import com.xcvk.platform.auth.module.vo.CurrentUserInfo;
-import com.xcvk.platform.auth.module.vo.LoginResponse;
+import com.xcvk.platform.auth.model.dto.LoginRequest;
+import com.xcvk.platform.auth.model.vo.CurrentUserInfo;
+import com.xcvk.platform.auth.model.vo.LoginResponse;
 import com.xcvk.platform.auth.service.AuthService;
 import com.xcvk.platform.common.domain.Result;
 import io.swagger.v3.oas.annotations.Operation;
