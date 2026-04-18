@@ -11,6 +11,21 @@
     <artifactId>platform-common-starter</artifactId>
 
     <description>common starter module</description>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.xcvk.platform</groupId>
+            <artifactId>platform-common</artifactId>
+        </dependency>
+    </dependencies>
 
 
 </project>

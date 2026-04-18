@@ -11,21 +11,53 @@
     <artifactId>platform-auth-service</artifactId>
 
     <description>auth service module(port 8081)</description>
-
     <dependencies>
         <dependency>
-            <groupId>com.xcvk.platform</groupId>
-            <artifactId>platform-common</artifactId>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
         </dependency>
-
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.alibaba.cloud</groupId>
-            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
+
+    <project>
+        <modelVersion>4.0.0</modelVersion>
+
+        <parent>
+            <groupId>com.xcvk.platform</groupId>
+            <artifactId>enterprise-ai-platform</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <relativePath>../pom.xml</relativePath>
+        </parent>
+
+        <artifactId>platform-auth-service</artifactId>
+
+        <description>auth service module(port 8081)</description>
+
+        <dependencies>
+            <dependency>
+                <groupId>com.xcvk.platform</groupId>
+                <artifactId>platform-common</artifactId>
+            </dependency>
+
+            <dependency>
+                <groupId>com.xcvk.platform</groupId>
+                <artifactId>platform-satoken-starter</artifactId>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-web</artifactId>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+            </dependency>
+
+        </dependencies>
+    </project>
 </project>
