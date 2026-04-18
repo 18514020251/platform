@@ -18,7 +18,7 @@ DROP TABLE IF EXISTS sys_dept;
 
 -- 部门表
 CREATE TABLE IF NOT EXISTS sys_dept (
-    id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '部门ID',
+    id           BIGINT PRIMARY KEY  COMMENT '部门ID',
     dept_name    VARCHAR(64) NOT NULL COMMENT '部门名称',
     status       TINYINT     NOT NULL DEFAULT 1 COMMENT '状态：1启用，0禁用',
     created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS sys_dept (
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS sys_user (
-    id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '用户ID',
+    id           BIGINT PRIMARY KEY  COMMENT '用户ID',
     username     VARCHAR(64)  NOT NULL COMMENT '登录账号',
     password     VARCHAR(255) NOT NULL COMMENT '登录密码（加密后）',
     real_name    VARCHAR(64)  NOT NULL COMMENT '真实姓名',
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
 
 -- 角色表
 CREATE TABLE IF NOT EXISTS sys_role (
-    id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '角色ID',
+    id           BIGINT PRIMARY KEY  COMMENT '角色ID',
     role_code    VARCHAR(64) NOT NULL COMMENT '角色编码',
     role_name    VARCHAR(64) NOT NULL COMMENT '角色名称',
     status       TINYINT     NOT NULL DEFAULT 1 COMMENT '状态：1启用，0禁用',
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS sys_role (
 
 -- 用户角色关系表
 CREATE TABLE IF NOT EXISTS sys_user_role (
-    id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+    id           BIGINT PRIMARY KEY  COMMENT '主键ID',
     user_id      BIGINT   NOT NULL COMMENT '用户ID',
     role_id      BIGINT   NOT NULL COMMENT '角色ID',
     created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
