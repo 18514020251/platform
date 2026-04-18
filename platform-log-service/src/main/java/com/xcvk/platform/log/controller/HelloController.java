@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @date 2026-04-17 16:09
  */
 @RestController
-@RequestMapping("/api/log")
+@RequestMapping
 public class HelloController {
 
     @GetMapping("/hello")

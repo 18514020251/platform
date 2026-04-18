@@ -34,6 +34,7 @@
 
     <properties>
         <java.version>17</java.version>
+        <maven.compiler.release>17</maven.compiler.release>
         <spring.boot.version>3.3.5</spring.boot.version>
         <spring.cloud.alibaba.version>2023.0.1.2</spring.cloud.alibaba.version>
         <spring.cloud.version>2023.0.3</spring.cloud.version>
@@ -142,7 +143,17 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.11.0</version>
+                    <configuration>
+                        <release>${maven.compiler.release}</release>
+                        <encoding>${project.build.sourceEncoding}</encoding>
+                    </configuration>
+                </plugin>
             </plugins>
+
         </pluginManagement>
     </build>
 </project>
