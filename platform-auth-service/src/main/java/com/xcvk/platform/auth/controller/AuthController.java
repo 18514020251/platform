@@ -5,6 +5,7 @@ import com.xcvk.platform.auth.model.vo.CurrentUserInfo;
 import com.xcvk.platform.auth.model.vo.LoginResponse;
 import com.xcvk.platform.auth.service.AuthService;
 import com.xcvk.platform.common.domain.Result;
+import com.xcvk.platform.log.starter.annotation.AccessLog;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,13 +34,13 @@ public class AuthController {
      * 用户登录
      *
      * <p>根据用户名和密码完成登录认证，认证成功后返回 token 及当前用户基础信息。</p>
-     * <p>此方法为对外暴露的核心业务接口，需要记录登录请求日志以便问题追踪。</p>
      *
      * @param request 登录请求参数
      * @return 登录结果，包含 token 和用户信息
      */
     @PostMapping("/login")
     @Operation(summary = "用户登录", description = "使用用户名密码登录系统")
+    @AccessLog(value = "用户登录", recordArgs = true, recordResult = false)
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return Result.success(authService.login(request));
     }
@@ -53,6 +54,7 @@ public class AuthController {
      */
     @PostMapping("/logout")
     @Operation(summary = "用户登出", description = "退出当前登录状态")
+    @AccessLog(value = "用户登出", recordArgs = false, recordResult = false)
     public Result<Void> logout() {
         authService.logout();
         return Result.successVoid();
@@ -62,12 +64,12 @@ public class AuthController {
      * 获取当前用户信息
      *
      * <p>获取已登录用户的详细信息，包括用户基本信息、角色列表、部门信息等。</p>
-     * <p>前端可通过此接口获取当前用户权限和展示信息。</p>
      *
      * @return 当前用户信息
      */
     @GetMapping("/me")
     @Operation(summary = "获取当前用户信息", description = "获取已登录用户的详细信息")
+    @AccessLog(value = "获取当前用户信息", recordArgs = false, recordResult = false)
     public Result<CurrentUserInfo> me() {
         return Result.success(authService.getCurrentUser());
     }

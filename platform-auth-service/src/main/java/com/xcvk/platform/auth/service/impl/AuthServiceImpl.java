@@ -20,14 +20,14 @@ import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.PasswordUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
-import java.util.Objects;
 
 /**
  * 认证服务实现类
  *
- * <p>实现用户登录、登出、获取当前用户信息等核心认证逻辑。</p>
+ * <p>负责登录认证、登录态退出和当前用户信息获取。</p>
  *
  * @author Programmer
  * @version 1.0
@@ -37,63 +37,56 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    private static final String LOGIN_FAILED_MESSAGE = "用户名或密码错误";
+    private static final String USER_DISABLED_MESSAGE = "用户已被禁用";
+    private static final String LOGIN_EXPIRED_MESSAGE = "当前登录状态已失效";
+
     private final SysUserMapper sysUserMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysDeptMapper sysDeptMapper;
 
     /**
-     * 用户登录
+     * 登录主流程只保留认证链路本身：
+     * 先确认账号是否可登录，再校验密码，最后补充角色信息并建立登录态。
      *
-     * <p>登录核心流程：</p>
-     * <ol>
-     *   <li>按用户名查询用户</li>
-     *   <li>校验用户是否存在且状态为启用</li>
-     *   <li>校验密码是否正确</li>
-     *   <li>查询用户角色编码列表（用于后续权限控制）</li>
-     *   <li>调用 Sa-Token 进行登录，生成 token</li>
-     *   <li>构建并返回登录响应</li>
-     * </ol>
+     * <p>这里对“用户不存在”和“密码错误”统一返回相同提示，
+     * 是为了避免把账号是否存在暴露给外部调用方。</p>
      *
-     * @param request 登录请求参数
-     * @return 登录响应结果
+     * @param request 登录请求
+     * @return 登录结果
      */
     @Override
     public LoginResponse login(LoginRequest request) {
-        SysUser user = getUserByUsername(request.username());
+        SysUser user = findUserByUsername(request.username());
 
         validateLoginUser(user);
         validatePassword(request.password(), user.getPassword());
 
-        List<String> roleCodes = getRoleCodes(user.getId());
+        List<String> roleCodes = getEnabledRoleCodes(user.getId());
 
         StpUtil.login(user.getId());
 
-        return buildLoginResponse(user, roleCodes);
+        return new LoginResponse(
+                StpUtil.getTokenValue(),
+                user.getId(),
+                user.getUsername(),
+                user.getRealName(),
+                roleCodes
+        );
     }
 
-    /**
-     * 用户登出
-     *
-     * <p>调用 Sa-Token 登出方法，清除当前用户的登录态。</p>
-     */
     @Override
     public void logout() {
         StpUtil.logout();
     }
 
     /**
-     * 获取当前登录用户信息
+     * 获取当前用户信息时，需要再次校验用户是否仍然有效，
+     * 防止“用户已被删除或禁用，但历史登录态尚未失效”的情况继续访问系统。
      *
-     * <p>获取流程：</p>
-     * <ol>
-     *   <li>校验当前是否有登录态</li>
-     *   <li>从登录态中获取用户 ID</li>
-     *   <li>查询用户详细信息</li>
-     *   <li>校验用户状态（防止登录后被禁用的情况）</li>
-     *   <li>补充角色编码列表和部门名称</li>
-     *   <li>构建并返回当前用户信息</li>
-     * </ol>
+     * <p>部门名称属于展示增强字段，不是登录主链字段；
+     * 即使部门不存在或已禁用，也不应影响当前接口主流程返回。</p>
      *
      * @return 当前登录用户信息
      */
@@ -101,12 +94,12 @@ public class AuthServiceImpl implements AuthService {
     public CurrentUserInfo getCurrentUser() {
         StpUtil.checkLogin();
 
-        Long userId = Long.valueOf(String.valueOf(StpUtil.getLoginId()));
-        SysUser user = getUserById(userId);
+        Long userId = getCurrentLoginUserId();
+        SysUser user = findUserById(userId);
 
         validateCurrentUser(user);
 
-        List<String> roleCodes = getRoleCodes(user.getId());
+        List<String> roleCodes = getEnabledRoleCodes(user.getId());
         String deptName = getDeptName(user.getDeptId());
 
         return new CurrentUserInfo(
@@ -118,146 +111,103 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
-    // ==================== 私有辅助方法 ====================
-
-    private SysUser getUserByUsername(String username) {
+    private SysUser findUserByUsername(String username) {
         return sysUserMapper.selectOne(
                 Wrappers.<SysUser>lambdaQuery()
                         .eq(SysUser::getUsername, username)
         );
     }
 
-    private SysUser getUserById(Long userId) {
+    private SysUser findUserById(Long userId) {
         return sysUserMapper.selectById(userId);
     }
 
+    private Long getCurrentLoginUserId() {
+        return Long.valueOf(String.valueOf(StpUtil.getLoginId()));
+    }
+
     /**
-     * 校验登录时的用户状态
+     * 登录场景下只关心“这个账号是否允许继续认证”，
+     * 其中“账号不存在”和“密码错误”都不对外暴露具体差异。
      *
-     * <p>校验项：用户是否存在、用户是否被禁用</p>
-     * <p>注意：此处不区分用户不存在和密码错误的具体原因，统一返回模糊提示，防止用户名枚举攻击。</p>
-     *
-     * @param user 用户实体，可能为 null
+     * @param user 用户信息
      */
     private void validateLoginUser(SysUser user) {
         if (user == null) {
-            throw new BusinessException(ErrorCode.BIZ_ERROR, "用户名或密码错误");
+            throw new BusinessException(ErrorCode.BIZ_ERROR, LOGIN_FAILED_MESSAGE);
         }
 
         if (!CommonStatusEnum.isEnabled(user.getStatus())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "用户已被禁用");
+            throw new BusinessException(ErrorCode.FORBIDDEN, USER_DISABLED_MESSAGE);
         }
     }
 
     /**
-     * 校验当前用户状态
+     * 已登录场景下需要区分两类问题：
+     * 一类是登录态对应的用户已经不存在，说明当前登录态应视为失效；
+     * 另一类是用户仍存在但状态被禁用，此时应明确返回无权限访问。
      *
-     * <p>与登录校验的区别：登录失效返回 UNAUTHORIZED，禁用返回 FORBIDDEN。</p>
-     *
-     * @param user 用户实体，可能为 null
+     * @param user 用户信息
      */
     private void validateCurrentUser(SysUser user) {
         if (user == null) {
-            // 用户被删除后，登录态还存在的情况
-            throw new BusinessException(ErrorCode.UNAUTHORIZED, "当前登录状态已失效");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, LOGIN_EXPIRED_MESSAGE);
         }
 
         if (!CommonStatusEnum.isEnabled(user.getStatus())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "用户已被禁用");
+            throw new BusinessException(ErrorCode.FORBIDDEN, USER_DISABLED_MESSAGE);
         }
     }
 
-    /**
-     * 校验密码
-     *
-     * <p>使用 PasswordUtils 进行密码匹配（支持 BCrypt 等加密方式）。</p>
-     * <p>密码错误时与用户不存在返回相同的错误信息，防止用户名枚举攻击。</p>
-     *
-     * @param rawPassword    前端传入的明文密码
-     * @param encodedPassword 数据库中存储的加密密码
-     */
     private void validatePassword(String rawPassword, String encodedPassword) {
         if (!PasswordUtils.matches(rawPassword, encodedPassword)) {
-            throw new BusinessException(ErrorCode.BIZ_ERROR, "用户名或密码错误");
+            throw new BusinessException(ErrorCode.BIZ_ERROR, LOGIN_FAILED_MESSAGE);
         }
     }
 
     /**
-     * 构建登录响应
+     * 角色查询分两步走：
+     * 先查用户-角色关系，再批量查角色表，只返回当前仍处于启用状态的角色编码。
      *
-     * @param user      用户实体
-     * @param roleCodes 用户角色编码列表
-     * @return 登录响应对象
-     */
-    private LoginResponse buildLoginResponse(SysUser user, List<String> roleCodes) {
-        return new LoginResponse(
-                StpUtil.getTokenValue(),
-                user.getId(),
-                user.getUsername(),
-                user.getRealName(),
-                roleCodes
-        );
-    }
-
-    /**
-     * 查询用户角色编码列表
-     *
-     * <p>查询逻辑：</p>
-     * <ol>
-     *   <li>通过用户角色关联表查询用户关联的角色 ID</li>
-     *   <li>通过角色 ID 批量查询角色信息</li>
-     *   <li>过滤掉禁用状态的角色（禁用角色不应赋予权限）</li>
-     *   <li>提取角色编码，并过滤掉空值</li>
-     * </ol>
+     * <p>这里额外做了去重和空值过滤，避免脏数据直接进入登录态返回结果。</p>
      *
      * @param userId 用户ID
-     * @return 角色编码列表，无角色时返回空列表
+     * @return 启用状态的角色编码列表
      */
-    private List<String> getRoleCodes(Long userId) {
-        // 查询用户关联的角色关系
+    private List<String> getEnabledRoleCodes(Long userId) {
         List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
                 Wrappers.<SysUserRole>lambdaQuery()
                         .eq(SysUserRole::getUserId, userId)
         );
 
-        if (userRoles.isEmpty()) {
+        if (userRoles == null || userRoles.isEmpty()) {
             return List.of();
         }
 
-        // 提取角色 ID 列表
         List<Long> roleIds = userRoles.stream()
                 .map(SysUserRole::getRoleId)
+                .distinct()
                 .toList();
 
         List<SysRole> roles = sysRoleMapper.selectByIds(roleIds);
-        if (roles.isEmpty()) {
+        if (roles == null || roles.isEmpty()) {
             return List.of();
         }
 
-        // 过滤启用状态的角色，提取角色编码
         return roles.stream()
                 .filter(role -> CommonStatusEnum.isEnabled(role.getStatus()))
                 .map(SysRole::getRoleCode)
-                .filter(Objects::nonNull)
+                .filter(StringUtils::hasText)
+                .distinct()
                 .toList();
     }
 
-    /**
-     * 获取部门名称
-     *
-     * <p>根据部门 ID 查询部门名称，如果部门不存在或被禁用，返回 null。</p>
-     * <p>部门信息非核心字段，缺失时返回 null 不影响主流程。</p>
-     *
-     * @param deptId 部门 ID，可能为 null
-     * @return 部门名称，不存在或禁用时返回 null
-     */
     private String getDeptName(Long deptId) {
         if (deptId == null) {
             return null;
         }
 
         SysDept dept = sysDeptMapper.selectById(deptId);
-        // 部门不存在或已禁用时，不返回部门名称
         if (dept == null || !CommonStatusEnum.isEnabled(dept.getStatus())) {
             return null;
         }

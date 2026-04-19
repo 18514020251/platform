@@ -30,6 +30,7 @@
         <module>platform-minio-starter</module>
         <module>platform-mq-starter</module>
         <module>platform-id-starter</module>
+        <module>platform-log-starter</module>
     </modules>
 
     <properties>
@@ -104,6 +105,12 @@
             <dependency>
                 <groupId>com.xcvk.platform</groupId>
                 <artifactId>platform-common-starter</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.xcvk.platform</groupId>
+                <artifactId>platform-log-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
