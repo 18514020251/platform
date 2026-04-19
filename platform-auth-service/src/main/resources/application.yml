@@ -6,7 +6,6 @@ spring:
     url: jdbc:mysql://127.0.0.1:3306/platform_auth?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
     password: '${MYSQL_PASSWORD}'
-#    password: '07210521'
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   application:
@@ -22,8 +21,21 @@ spring:
         namespace: ${NACOS_NAMESPACE:public}
         group: ${NACOS_GROUP:DEFAULT_GROUP}
 
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      database: 0
+      timeout: 5s
+
 server:
   port: 8081
+
+platform:
+  redis:
+    health-check:
+      enabled: true
+      fail-fast: false
 
 mybatis-plus:
   configuration:

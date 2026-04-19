@@ -1,0 +1,2 @@
+com.xcvk.platform.redis.starter.config.PlatformRedisTemplateAutoConfiguration
+com.xcvk.platform.redis.starter.config.PlatformRedisHealthCheckAutoConfiguration

@@ -8,12 +8,14 @@ import com.xcvk.platform.auth.model.entity.SysDept;
 import com.xcvk.platform.auth.model.entity.SysRole;
 import com.xcvk.platform.auth.model.entity.SysUser;
 import com.xcvk.platform.auth.model.entity.SysUserRole;
+import com.xcvk.platform.auth.model.security.LoginUser;
 import com.xcvk.platform.auth.model.vo.CurrentUserInfo;
 import com.xcvk.platform.auth.model.vo.LoginResponse;
 import com.xcvk.platform.auth.repository.mapper.SysDeptMapper;
 import com.xcvk.platform.auth.repository.mapper.SysRoleMapper;
 import com.xcvk.platform.auth.repository.mapper.SysUserMapper;
 import com.xcvk.platform.auth.repository.mapper.SysUserRoleMapper;
+import com.xcvk.platform.auth.service.AuthCacheService;
 import com.xcvk.platform.auth.service.AuthService;
 import com.xcvk.platform.common.exception.BusinessException;
 import com.xcvk.platform.common.exception.ErrorCode;
@@ -45,13 +47,14 @@ public class AuthServiceImpl implements AuthService {
     private final SysUserRoleMapper sysUserRoleMapper;
     private final SysRoleMapper sysRoleMapper;
     private final SysDeptMapper sysDeptMapper;
+    private final AuthCacheService authCacheService;
 
     /**
      * 登录主流程只保留认证链路本身：
      * 先确认账号是否可登录，再校验密码，最后补充角色信息并建立登录态。
      *
-     * <p>这里对“用户不存在”和“密码错误”统一返回相同提示，
-     * 是为了避免把账号是否存在暴露给外部调用方。</p>
+     * <p>登录成功后会把当前登录人的身份上下文写入 Redis，
+     * 以便后续获取当前登录人和鉴权能力复用。</p>
      *
      * @param request 登录请求
      * @return 登录结果
@@ -67,6 +70,9 @@ public class AuthServiceImpl implements AuthService {
 
         StpUtil.login(user.getId());
 
+        LoginUser loginUser = buildLoginUser(user, roleCodes);
+        authCacheService.cacheLoginUser(loginUser);
+
         return new LoginResponse(
                 StpUtil.getTokenValue(),
                 user.getId(),
@@ -76,17 +82,25 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
+    /**
+     * 登出时同步清理登录用户身份缓存，
+     * 避免退出后仍保留旧的身份上下文。
+     */
     @Override
     public void logout() {
+        if (StpUtil.isLogin()) {
+            authCacheService.evictLoginUser(getCurrentLoginUserId());
+        }
+
         StpUtil.logout();
     }
 
     /**
-     * 获取当前用户信息时，需要再次校验用户是否仍然有效，
-     * 防止“用户已被删除或禁用，但历史登录态尚未失效”的情况继续访问系统。
+     * 获取当前用户信息时，先校验当前登录态是否仍然有效，
+     * 再优先从 Redis 读取登录用户身份上下文。
      *
-     * <p>部门名称属于展示增强字段，不是登录主链字段；
-     * 即使部门不存在或已禁用，也不应影响当前接口主流程返回。</p>
+     * <p>这里仍然先查一次用户主表，是为了保证用户被删除或禁用时能及时识别，
+     * 不让缓存把失效账号继续放行。</p>
      *
      * @return 当前登录用户信息
      */
@@ -99,16 +113,16 @@ public class AuthServiceImpl implements AuthService {
 
         validateCurrentUser(user);
 
-        List<String> roleCodes = getEnabledRoleCodes(user.getId());
-        String deptName = getDeptName(user.getDeptId());
+        LoginUser cachedLoginUser = authCacheService.getLoginUser(userId);
+        if (cachedLoginUser != null) {
+            return toCurrentUserInfo(cachedLoginUser);
+        }
 
-        return new CurrentUserInfo(
-                user.getId(),
-                user.getUsername(),
-                user.getRealName(),
-                deptName,
-                roleCodes
-        );
+        List<String> roleCodes = getEnabledRoleCodes(user.getId());
+        LoginUser loginUser = buildLoginUser(user, roleCodes);
+
+        authCacheService.cacheLoginUser(loginUser);
+        return toCurrentUserInfo(loginUser);
     }
 
     private SysUser findUserByUsername(String username) {
@@ -167,9 +181,9 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * 角色查询分两步走：
-     * 先查用户-角色关系，再批量查角色表，只返回当前仍处于启用状态的角色编码。
+     * 先查用户角色关系，再批量查角色表，只返回当前仍处于启用状态的角色编码。
      *
-     * <p>这里额外做了去重和空值过滤，避免脏数据直接进入登录态返回结果。</p>
+     * <p>这里额外做了去重和空值过滤，避免脏数据直接进入登录身份上下文。</p>
      *
      * @param userId 用户ID
      * @return 启用状态的角色编码列表
@@ -200,6 +214,27 @@ public class AuthServiceImpl implements AuthService {
                 .filter(StringUtils::hasText)
                 .distinct()
                 .toList();
+    }
+
+    private LoginUser buildLoginUser(SysUser user, List<String> roleCodes) {
+        return new LoginUser(
+                user.getId(),
+                user.getUsername(),
+                user.getRealName(),
+                user.getDeptId(),
+                getDeptName(user.getDeptId()),
+                roleCodes
+        );
+    }
+
+    private CurrentUserInfo toCurrentUserInfo(LoginUser loginUser) {
+        return new CurrentUserInfo(
+                loginUser.userId(),
+                loginUser.username(),
+                loginUser.realName(),
+                loginUser.deptName(),
+                loginUser.roleCodes()
+        );
     }
 
     private String getDeptName(Long deptId) {
