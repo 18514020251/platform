@@ -15,6 +15,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 @SpringBootApplication
 @EnableDiscoveryClient
 public class GatewayApplication {
+    // TODO 全局判断接口
     public static void main(String[] args) {
         SpringApplication.run(GatewayApplication.class , args);
     }

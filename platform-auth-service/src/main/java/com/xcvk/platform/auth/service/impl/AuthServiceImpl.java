@@ -17,6 +17,7 @@ import com.xcvk.platform.auth.repository.mapper.SysUserMapper;
 import com.xcvk.platform.auth.repository.mapper.SysUserRoleMapper;
 import com.xcvk.platform.auth.service.AuthCacheService;
 import com.xcvk.platform.auth.service.AuthService;
+import com.xcvk.platform.auth.starter.util.SaTokenSessionUtils;
 import com.xcvk.platform.common.exception.BusinessException;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.PasswordUtils;
@@ -48,6 +49,7 @@ public class AuthServiceImpl implements AuthService {
     private final SysRoleMapper sysRoleMapper;
     private final SysDeptMapper sysDeptMapper;
     private final AuthCacheService authCacheService;
+    private final SaTokenSessionUtils saTokenSessionUtils;
 
     /**
      * 登录主流程只保留认证链路本身：
@@ -69,6 +71,7 @@ public class AuthServiceImpl implements AuthService {
         List<String> roleCodes = getEnabledRoleCodes(user.getId());
 
         StpUtil.login(user.getId());
+        saTokenSessionUtils.storeLoginIdentity(user.getUsername(), roleCodes);
 
         LoginUser loginUser = buildLoginUser(user, roleCodes);
         authCacheService.cacheLoginUser(loginUser);

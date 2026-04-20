@@ -38,12 +38,14 @@ public class RedisConnectionChecker implements ApplicationListener<ApplicationRe
         RedisConnectionFactory factory = stringRedisTemplate.getConnectionFactory();
         if (factory == null) {
             log.warn("""
+                
                 ======== Middleware Check (redis-starter) ========
                 Redis:  FAIL
                 Reason: ConnectionFactory is null
                 Addr :  {}:{}
                 DB   :  {}
                 ================================================
+                
                 """, host, port, db);
 
             if (properties.isFailFast()) {
@@ -55,21 +57,25 @@ public class RedisConnectionChecker implements ApplicationListener<ApplicationRe
         try (RedisConnection conn = factory.getConnection()) {
             String pong = conn.ping();
             log.info("""
+                
                 ======== Middleware Check (redis-starter) ========
                 Redis:  OK
                 Addr :  {}:{}
                 DB   :  {}
                 PING :  {}
                 ================================================
+                
                 """, host, port, db, pong);
         } catch (Exception e) {
             log.warn("""
+                
                 ======== Middleware Check (redis-starter) ========
                 Redis:  FAIL
                 Addr :  {}:{}
                 DB   :  {}
                 ERR  :  {}
                 ================================================
+                
                 """, host, port, db, rootMessage(e));
 
             if (properties.isFailFast()) {

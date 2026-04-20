@@ -1,1 +1,2 @@
 com.xcvk.platform.auth.starter.config.SaTokenAutoConfiguration
+com.xcvk.platform.auth.starter.config.SaTokenWebMvcConfiguration

@@ -1,5 +1,7 @@
 package com.xcvk.platform.auth.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
+import com.xcvk.platform.auth.constant.AuthRoleConstants;
 import com.xcvk.platform.auth.model.dto.LoginRequest;
 import com.xcvk.platform.auth.model.vo.CurrentUserInfo;
 import com.xcvk.platform.auth.model.vo.LoginResponse;
@@ -69,6 +71,7 @@ public class AuthController {
      */
     @GetMapping("/me")
     @Operation(summary = "获取当前用户信息", description = "获取已登录用户的详细信息")
+    @SaCheckRole(AuthRoleConstants.ADMIN)
     @AccessLog(value = "获取当前用户信息", recordArgs = false, recordResult = false)
     public Result<CurrentUserInfo> me() {
         return Result.success(authService.getCurrentUser());

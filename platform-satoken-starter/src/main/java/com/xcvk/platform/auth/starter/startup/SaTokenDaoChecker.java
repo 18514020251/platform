@@ -22,9 +22,11 @@ public class SaTokenDaoChecker implements ApplicationListener<ApplicationReadyEv
     public void onApplicationEvent(ApplicationReadyEvent event) {
         Object dao = SaManager.getSaTokenDao();
         log.info("""
+            
             ======== Middleware Check (satoken-starter) ========
             SaTokenDao: {}
             ===================================================
+            
             """, dao.getClass().getName());
     }
 }
