@@ -1,8 +1,7 @@
 package com.xcvk.platform.auth.model.entity;
 
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.*;
+
 import java.time.LocalDateTime;
 import java.io.Serializable;
 import lombok.Data;
@@ -38,12 +37,14 @@ public class SysUserRole implements Serializable {
     /**
      * 角色ID
      */
-    private Long roleId;
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createdAt;
 
     /**
      * 创建时间
      */
-    private LocalDateTime createdAt;
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
 
 
 }
