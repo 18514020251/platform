@@ -1,20 +1,20 @@
 package com.xcvk.platform.workflow.controller;
 
-import org.springframework.web.bind.annotation.GetMapping;
+
 import org.springframework.web.bind.annotation.RequestMapping;
+
 import org.springframework.web.bind.annotation.RestController;
 
 /**
+ * <p>
+ * 工单主表 前端控制器
+ * </p>
+ *
  * @author Programmer
- * @version 1.0
- * @date 2026-04-17 16:09
+ * @since 2026-04-20
  */
 @RestController
 @RequestMapping
-public class HelloController {
+public class WfTicketController {
 
-    @GetMapping("/hello")
-    public String hello() {
-        return "workflow-service ok";
-    }
 }

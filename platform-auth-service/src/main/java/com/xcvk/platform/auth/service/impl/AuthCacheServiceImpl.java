@@ -5,6 +5,7 @@ import com.xcvk.platform.auth.constant.AuthCacheConstants;
 import com.xcvk.platform.auth.model.security.LoginUser;
 import com.xcvk.platform.auth.service.AuthCacheService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthCacheServiceImpl implements AuthCacheService {
 
     private final StringRedisTemplate stringRedisTemplate;
@@ -38,6 +40,7 @@ public class AuthCacheServiceImpl implements AuthCacheService {
 
             return objectMapper.readValue(jsonValue, LoginUser.class);
         } catch (Exception e) {
+            log.warn("Failed to get login user from cache, userId={}", userId, e);
             return null;
         }
     }

@@ -1,6 +1,5 @@
 package com.xcvk.platform.common.exception;
 
-import lombok.Data;
 import lombok.Getter;
 
 /**
@@ -9,9 +8,6 @@ import lombok.Getter;
  * @author Programmer
  * @version 1.0
  * @date 2026-04-18 10:19
- */
-/**
- * 业务异常
  */
 @Getter
 public class BusinessException extends RuntimeException {

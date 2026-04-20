@@ -37,14 +37,12 @@ public class SysUserRole implements Serializable {
     /**
      * 角色ID
      */
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createdAt;
+    private Long roleId;
 
     /**
      * 创建时间
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
-
 
 }
