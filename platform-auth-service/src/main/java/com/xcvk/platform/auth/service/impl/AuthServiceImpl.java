@@ -20,6 +20,7 @@ import com.xcvk.platform.auth.service.AuthService;
 import com.xcvk.platform.auth.starter.util.SaTokenSessionUtils;
 import com.xcvk.platform.common.exception.BusinessException;
 import com.xcvk.platform.common.exception.ErrorCode;
+import com.xcvk.platform.common.util.BizAssert;
 import com.xcvk.platform.common.util.PasswordUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -150,13 +151,12 @@ public class AuthServiceImpl implements AuthService {
      * @param user 用户信息
      */
     private void validateLoginUser(SysUser user) {
-        if (user == null) {
-            throw new BusinessException(ErrorCode.BIZ_ERROR, LOGIN_FAILED_MESSAGE);
-        }
-
-        if (!CommonStatusEnum.isEnabled(user.getStatus())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, USER_DISABLED_MESSAGE);
-        }
+        BizAssert.notNull(user, ErrorCode.BIZ_ERROR, LOGIN_FAILED_MESSAGE);
+        BizAssert.isTrue(
+                CommonStatusEnum.isEnabled(user.getStatus()),
+                ErrorCode.FORBIDDEN,
+                USER_DISABLED_MESSAGE
+        );
     }
 
     /**
@@ -167,19 +167,20 @@ public class AuthServiceImpl implements AuthService {
      * @param user 用户信息
      */
     private void validateCurrentUser(SysUser user) {
-        if (user == null) {
-            throw new BusinessException(ErrorCode.UNAUTHORIZED, LOGIN_EXPIRED_MESSAGE);
-        }
-
-        if (!CommonStatusEnum.isEnabled(user.getStatus())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, USER_DISABLED_MESSAGE);
-        }
+        BizAssert.notNull(user, ErrorCode.UNAUTHORIZED, LOGIN_EXPIRED_MESSAGE);
+        BizAssert.isTrue(
+                CommonStatusEnum.isEnabled(user.getStatus()),
+                ErrorCode.FORBIDDEN,
+                USER_DISABLED_MESSAGE
+        );
     }
 
     private void validatePassword(String rawPassword, String encodedPassword) {
-        if (!PasswordUtils.matches(rawPassword, encodedPassword)) {
-            throw new BusinessException(ErrorCode.BIZ_ERROR, LOGIN_FAILED_MESSAGE);
-        }
+        BizAssert.isTrue(
+                PasswordUtils.matches(rawPassword, encodedPassword),
+                ErrorCode.BIZ_ERROR,
+                LOGIN_FAILED_MESSAGE
+        );
     }
 
     /**

@@ -4,6 +4,8 @@ import com.xcvk.platform.common.domain.PageResult;
 import com.xcvk.platform.common.enums.CommonStatusEnum;
 import com.xcvk.platform.common.exception.BusinessException;
 import com.xcvk.platform.common.exception.ErrorCode;
+import com.xcvk.platform.common.util.BizAssert;
+import com.xcvk.platform.common.util.DbAssert;
 import com.xcvk.platform.id.generator.SnowflakeIdGenerator;
 import com.xcvk.platform.workflow.constant.TicketSourceConstants;
 import com.xcvk.platform.workflow.constant.TicketStatusConstants;
@@ -65,9 +67,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         Ticket ticket = buildTicket(cmd, ticketType, ticketId, ticketNo);
 
         int rows = baseMapper.insert(ticket);
-        if (rows != 1) {
-            throw new BusinessException(ErrorCode.BIZ_ERROR, "工单创建失败");
-        }
+        DbAssert.affectedOne(rows, "工单创建失败");
 
         return new CreateTicketResponse(
                 ticket.getId(),
@@ -78,27 +78,14 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
 
 
     private void validateCreateCmd(CreateTicketCmd cmd) {
-        if (cmd == null) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID);
-        }
+        BizAssert.notNull(cmd, ErrorCode.PARAM_INVALID, "创建工单命令不能为空");
 
-        validateRequired(cmd.ticketTypeCode(), "工单类型");
-        validateRequired(cmd.title(), "工单标题");
-        validateRequired(cmd.content(), "工单内容");
-        validateRequired(cmd.creatorName(), "创建人");
-        validateRequired(cmd.creatorId(), "创建人ID");
-    }
-
-    private void validateRequired(String value, String fieldName) {
-        if (!StringUtils.hasText(value)) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, fieldName + "不能为空");
-        }
-    }
-
-    private void validateRequired(Object value, String fieldName) {
-        if (value == null) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, fieldName + "不能为空");
-        }
+        BizAssert.hasText(cmd.ticketTypeCode(), ErrorCode.PARAM_INVALID, "工单类型不能为空");
+        BizAssert.hasText(cmd.title(), ErrorCode.PARAM_INVALID, "工单标题不能为空");
+        BizAssert.hasText(cmd.content(), ErrorCode.PARAM_INVALID, "工单内容不能为空");
+        BizAssert.hasText(cmd.creatorName(), ErrorCode.PARAM_INVALID, "创建人不能为空");
+        BizAssert.notNull(cmd.creatorId(), ErrorCode.PARAM_INVALID, "创建人ID不能为空");
+        BizAssert.hasText(cmd.source(), ErrorCode.PARAM_INVALID, "工单来源不能为空");
     }
 
     /**
@@ -108,7 +95,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      * @return 工单编号
      * */
     private String buildTicketNo(Long ticketId) {
-        return DEFAULT_TICKET_NO_PREFIX.concat(ticketId.toString()) ;
+        return DEFAULT_TICKET_NO_PREFIX.concat(ticketId.toString());
     }
 
     /**
@@ -118,19 +105,43 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      * @param ticketType 工单类型对象
      * */
     private void validateTicketSource(CreateTicketCmd cmd, TicketType ticketType) {
-        if (!StringUtils.hasText(cmd.source())) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "工单来源不能为空");
-        }
+        BizAssert.hasText(cmd.source(), ErrorCode.PARAM_INVALID, "工单来源不能为空");
 
-        if (!TicketSourceConstants.MANUAL.equals(cmd.source())
-                && !TicketSourceConstants.AI_AGENT.equals(cmd.source())) {
-            throw new BusinessException(ErrorCode.PARAM_INVALID, "工单来源无效");
-        }
+        BizAssert.isTrue(
+                TicketSourceConstants.MANUAL.equals(cmd.source())
+                        || TicketSourceConstants.AI_AGENT.equals(cmd.source()),
+                ErrorCode.PARAM_INVALID,
+                "工单来源无效"
+        );
 
-        if (TicketSourceConstants.AI_AGENT.equals(cmd.source())
-                && !CommonStatusEnum.isEnabled(ticketType.getAllowAiCreate())) {
-            throw new BusinessException(ErrorCode.BIZ_ERROR, "当前工单类型不允许 AI 创建");
+        if (TicketSourceConstants.AI_AGENT.equals(cmd.source())) {
+            BizAssert.isTrue(
+                    CommonStatusEnum.isEnabled(ticketType.getAllowAiCreate()),
+                    ErrorCode.BIZ_ERROR,
+                    "当前工单类型不允许 AI 创建"
+            );
         }
+    }
+
+    private String safeTrim(String value) {
+        return value != null ? value.trim() : null;
+    }
+
+    /**
+     * 解析优先级
+     *
+     * @param priority 优先级
+     * @param defaultPriority 默认优先级
+     * @return 解析后的优先级
+     */
+    private String resolvePriority(String priority, String defaultPriority) {
+        if (StringUtils.hasText(priority)) {
+            return priority.trim();
+        }
+        if (StringUtils.hasText(defaultPriority)) {
+            return defaultPriority.trim();
+        }
+        return DEFAULT_PRIORITY;
     }
 
     /**
@@ -157,20 +168,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 .setSourceRef(safeTrim(cmd.sourceRef()))
                 .setCreatorId(cmd.creatorId())
                 .setCreatorName(safeTrim(cmd.creatorName()));
-    }
-
-    private String safeTrim(String value) {
-        return value != null ? value.trim() : null;
-    }
-
-    private String resolvePriority(String priority, String defaultPriority) {
-        if (StringUtils.hasText(priority)) {
-            return priority.trim();
-        }
-        if (StringUtils.hasText(defaultPriority)) {
-            return defaultPriority.trim();
-        }
-        return DEFAULT_PRIORITY;
     }
 
     @Override
