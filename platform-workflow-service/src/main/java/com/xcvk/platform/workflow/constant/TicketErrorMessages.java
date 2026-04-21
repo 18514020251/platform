@@ -6,8 +6,8 @@ package com.xcvk.platform.workflow.constant;
  * <p>用于统一 workflow 模块中的工单相关异常提示，
  * 避免同类业务错误在不同位置出现不同文案，影响接口一致性与排查效率。</p>
  *
- * <p>当前阶段优先覆盖工单创建、员工侧查询、处理侧查询等核心场景，
- * 后续接单、分派、状态流转等能力继续在此收口。</p>
+ * <p>当前阶段优先覆盖工单创建、员工侧查询、处理侧查询、接单等核心场景，
+ * 后续分派、状态流转等能力继续在此收口。</p>
  *
  * @author Programmer
  * @version 1.0
@@ -32,9 +32,15 @@ public final class TicketErrorMessages {
     public static final String TICKET_ID_REQUIRED = "工单ID不能为空";
     public static final String TICKET_NOT_FOUND_OR_NO_PERMISSION = "工单不存在或无权限查看";
     public static final String TICKET_TYPE_NOT_FOUND_OR_DISABLED = "工单类型不存在或状态异常";
+    public static final String MANAGE_PERMISSION_DENIED = "当前用户无权限查看处理侧工单";
 
     /**
-     * 处理侧列表相关异常文案
+     * 接单相关异常文案
      */
-    public static final String MANAGE_PERMISSION_DENIED = "当前用户无权限查看处理侧工单";
+    public static final String ACCEPT_PERMISSION_DENIED = "当前用户无权限接单";
+    public static final String TICKET_NOT_FOUND = "工单不存在";
+    public static final String TICKET_STATUS_NOT_ALLOW_ACCEPT = "当前工单状态不允许接单";
+    public static final String TICKET_ALREADY_ASSIGNED = "当前工单已被接单";
+    public static final String TICKET_ACCEPT_FAILED = "工单接单失败";
+    public static final String TICKET_ALREADY_ACCEPTED_OR_STATUS_CHANGED = "工单已被其他人员接单或当前状态不可接单";
 }

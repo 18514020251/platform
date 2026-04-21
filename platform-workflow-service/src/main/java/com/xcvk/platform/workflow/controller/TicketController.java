@@ -32,22 +32,22 @@ import org.springframework.web.bind.annotation.*;
  * <p>当前阶段对外提供两类工单接口：</p>
  * <ul>
  *     <li>员工侧：创建工单、我的工单列表、我的工单详情</li>
- *     <li>处理侧：支持人员/管理员视角的工单列表</li>
+ *     <li>处理侧：支持人员/管理员视角的工单列表、接单</li>
  * </ul>
  *
  * <p>控制器层只负责接参与返回结果，
- * 具体业务规则和权限范围收敛到 Service 层实现，
- * 以保证控制器足够薄、主流程足够清晰。</p>
+ * 具体业务规则和数据范围收敛到 Service 层实现，
+ * 以保证控制器职责单一、主流程清晰。</p>
  *
  * @author Programmer
  * @version 1.0
- * @date 2026-04-21
+ * @date 2026-04-20
  */
 @RestController
 @RequestMapping("/tickets")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "工单管理", description = "工单创建、查询与详情")
+@Tag(name = "工单管理", description = "工单创建、查询与处理")
 public class TicketController {
 
     private final TicketService ticketService;
@@ -135,14 +135,41 @@ public class TicketController {
      */
     @GetMapping
     @SaCheckLogin
-    @SaCheckRole(value = {
-            PlatformRoleConstants.ADMIN,
-            PlatformRoleConstants.SUPPORT
-    }, mode = SaMode.OR)
+    @SaCheckRole(
+            value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT},
+            mode = SaMode.OR
+    )
     @AccessLog(value = "查询处理侧工单列表", recordArgs = false, recordResult = false)
     @Operation(summary = "处理侧工单列表", description = "支持人员或管理员分页查询可处理工单")
     public Result<PageResult<TicketManageListItemVO>> pageManageTickets(@ModelAttribute TicketManageQuery query) {
         CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
         return Result.success(ticketService.pageManageTickets(identity, query));
+    }
+
+    /**
+     * 接单
+     *
+     * <p>该接口面向支持人员与管理员使用，
+     * 用于将“待受理且未分派”的工单认领为当前处理人。</p>
+     *
+     * <p>接口入口先通过角色注解做准入控制，
+     * 具体是否允许接单、是否存在并发抢单等问题，
+     * 统一由 Service 层处理。</p>
+     *
+     * @param ticketId 工单ID
+     * @return 成功响应
+     */
+    @PostMapping("/{ticketId}/accept")
+    @SaCheckLogin
+    @SaCheckRole(
+            value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT},
+            mode = SaMode.OR
+    )
+    @AccessLog(value = "工单接单", recordArgs = false, recordResult = false)
+    @Operation(summary = "工单接单", description = "支持人员或管理员接单")
+    public Result<Void> acceptTicket(@PathVariable("ticketId") Long ticketId) {
+        CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
+        ticketService.acceptTicket(identity, ticketId);
+        return Result.successVoid();
     }
 }

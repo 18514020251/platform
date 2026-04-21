@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xcvk.platform.workflow.repository.mapper.TicketMapper">
+
+    <!--
+        条件接单：
+        只有工单仍然处于“未分派 + 待受理”时才允许更新。
+        通过数据库原子条件更新保证同一时刻只有一个人能成功接单。
+    -->
+    <update id="acceptTicket">
+        UPDATE wf_ticket
+        SET assignee_id = #{assigneeId},
+            assignee_name = #{assigneeName},
+            status = #{toStatus},
+            updated_at = NOW()
+        WHERE id = #{ticketId}
+          AND assignee_id IS NULL
+          AND status = #{fromStatus}
+    </update>
+
+</mapper>

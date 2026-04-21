@@ -11,6 +11,14 @@ public class TicketStatusConstants {
     private TicketStatusConstants() {
     }
 
+    /**
+     * 工单待处理
+     */
     public static final String PENDING = "PENDING";
+
+    /**
+     * 工单处理中
+     */
+    public static final String PROCESSING = "PROCESSING";
 
 }

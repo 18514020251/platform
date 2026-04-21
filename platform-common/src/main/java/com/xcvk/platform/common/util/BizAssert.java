@@ -56,4 +56,17 @@ public final class BizAssert {
             throw new BusinessException(errorCode, message);
         }
     }
+
+    /**
+     * 断言对象为空
+     *
+     * @param value 待校验对象
+     * @param errorCode 错误码
+     * @param message 错误信息
+     */
+    public static void isNull(Object value, ErrorCode errorCode, String message) {
+        if (value != null) {
+            throw new BusinessException(errorCode, message);
+        }
+    }
 }
