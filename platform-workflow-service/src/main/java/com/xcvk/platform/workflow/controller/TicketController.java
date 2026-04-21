@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.*;
  * @date 2026-04-20
  */
 @RestController
-@RequestMapping("/tickets")
+@RequestMapping("/ticket")
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "工单管理", description = "工单创建、查询与详情")
@@ -96,7 +96,7 @@ public class TicketController {
     @SaCheckLogin
     @AccessLog(value = "查询我的工单详情", recordArgs = false, recordResult = false)
     @Operation(summary = "我的工单详情", description = "查询当前登录用户自己的工单详情")
-    public Result<TicketDetailVO> getMyTicketDetail(@PathVariable Long ticketId) {
+    public Result<TicketDetailVO> getMyTicketDetail(@PathVariable("ticketId") Long ticketId) {
         Long currentUserId = saTokenSessionUtils.getCurrentLoginIdentity().userId();
         return Result.success(ticketService.getMyTicketDetail(currentUserId, ticketId));
     }

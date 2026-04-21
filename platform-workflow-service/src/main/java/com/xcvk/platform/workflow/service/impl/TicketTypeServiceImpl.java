@@ -26,9 +26,29 @@ import java.util.List;
 @Service
 public class TicketTypeServiceImpl extends ServiceImpl<TicketTypeMapper, TicketType> implements TicketTypeService {
 
+    /**
+     * 查询启用状态的工单类型选项
+     *
+     * <p>当前阶段只返回前端创建工单所需的最小字段，
+     * 并按类型名称升序返回，便于前端直接展示。</p>
+     *
+     * @return 工单类型选项列表
+     */
     @Override
     public List<TicketTypeOptionVO> listEnabledOptions() {
-        return List.of();
+        List<TicketType> ticketTypes = list(
+                new LambdaQueryWrapper<TicketType>()
+                        .eq(TicketType::getStatus, CommonStatusEnum.ENABLED.getCode())
+                        .orderByAsc(TicketType::getTypeName)
+        );
+
+        if (ticketTypes == null || ticketTypes.isEmpty()) {
+            return List.of();
+        }
+
+        return ticketTypes.stream()
+                .map(this::toTicketTypeOptionVO)
+                .toList();
     }
 
     /**
@@ -54,5 +74,20 @@ public class TicketTypeServiceImpl extends ServiceImpl<TicketTypeMapper, TicketT
                 TicketErrorMessages.TICKET_TYPE_NOT_FOUND_OR_DISABLED
         );
         return ticketType;
+    }
+
+    /**
+     * 将工单类型实体转换为选项视图对象。
+     *
+     * @param ticketType 工单类型实体
+     * @return 工单类型选项
+     */
+    private TicketTypeOptionVO toTicketTypeOptionVO(TicketType ticketType) {
+        return new TicketTypeOptionVO(
+                ticketType.getId(),
+                ticketType.getTypeCode(),
+                ticketType.getTypeName(),
+                ticketType.getDefaultPriority()
+        );
     }
 }
