@@ -1,22 +1,24 @@
 package com.xcvk.platform.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xcvk.platform.common.enums.CommonStatusEnum;
-import com.xcvk.platform.common.exception.BusinessException;
 import com.xcvk.platform.common.exception.ErrorCode;
+import com.xcvk.platform.common.util.BizAssert;
+import com.xcvk.platform.workflow.constant.TicketErrorMessages;
 import com.xcvk.platform.workflow.model.entity.TicketType;
 import com.xcvk.platform.workflow.model.vo.TicketTypeOptionVO;
 import com.xcvk.platform.workflow.repository.mapper.TicketTypeMapper;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xcvk.platform.workflow.service.TicketTypeService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 /**
- * <p>
- * 工单类型表 服务实现类
- * </p>
+ * 工单类型服务实现类
+ *
+ * <p>当前阶段主要提供启用工单类型查询能力，
+ * 供工单创建和类型选项展示复用。</p>
  *
  * @author Programmer
  * @since 2026-04-20
@@ -30,13 +32,14 @@ public class TicketTypeServiceImpl extends ServiceImpl<TicketTypeMapper, TicketT
     }
 
     /**
-     * 根据工单类型编码获取工单类型：
-     * 如果出现工单类型不存在或状态异常，则抛出异常。
+     * 根据工单类型编码查询启用状态的工单类型。
      *
+     * <p>如果工单类型不存在，或该类型当前不是启用状态，
+     * 则视为不可用于工单创建。</p>
      *
      * @param ticketTypeCode 工单类型编码
      * @return 工单类型对象
-     * */
+     */
     @Override
     public TicketType getEnabledTicketType(String ticketTypeCode) {
         LambdaQueryWrapper<TicketType> queryWrapper = new LambdaQueryWrapper<>();
@@ -45,9 +48,11 @@ public class TicketTypeServiceImpl extends ServiceImpl<TicketTypeMapper, TicketT
 
         TicketType ticketType = getOne(queryWrapper);
 
-        if (ticketType == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND, "工单类型不存在");
-        }
+        BizAssert.notNull(
+                ticketType,
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.TICKET_TYPE_NOT_FOUND_OR_DISABLED
+        );
         return ticketType;
     }
 }
