@@ -2,7 +2,7 @@ package com.xcvk.platform.auth.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.xcvk.platform.auth.enums.CommonStatusEnum;
+import com.xcvk.platform.common.enums.CommonStatusEnum;
 import com.xcvk.platform.auth.model.dto.LoginRequest;
 import com.xcvk.platform.auth.model.entity.SysDept;
 import com.xcvk.platform.auth.model.entity.SysRole;
@@ -71,7 +71,7 @@ public class AuthServiceImpl implements AuthService {
         List<String> roleCodes = getEnabledRoleCodes(user.getId());
 
         StpUtil.login(user.getId());
-        saTokenSessionUtils.storeLoginIdentity(user.getUsername(), roleCodes);
+        saTokenSessionUtils.storeLoginIdentity(user.getUsername(), user.getRealName(), roleCodes);
 
         LoginUser loginUser = buildLoginUser(user, roleCodes);
         authCacheService.cacheLoginUser(loginUser);

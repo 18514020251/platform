@@ -1,4 +1,4 @@
-package com.xcvk.platform.auth.enums;
+package com.xcvk.platform.common.enums;
 
 import lombok.Getter;
 

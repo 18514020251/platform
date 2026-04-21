@@ -51,6 +51,7 @@
         <langchain4j.version>0.35.0</langchain4j.version>
         <elasticsearch.java.version>8.15.2</elasticsearch.java.version>
         <springdoc.version>2.6.0</springdoc.version>
+        <swagger.version>2.2.38</swagger.version>
     </properties>
 
 

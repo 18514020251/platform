@@ -20,6 +20,11 @@ public final class SaTokenSessionConstants {
     public static final String USERNAME = "username";
 
     /**
+     * 当前登录用户真实姓名
+     */
+    public static final String REAL_NAME = "realName";
+
+    /**
      * 当前登录用户角色编码列表
      */
     public static final String ROLE_CODES = "roleCodes";

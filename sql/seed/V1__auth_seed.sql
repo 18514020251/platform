@@ -1,3 +1,5 @@
+use platform_auth;
+
 INSERT INTO sys_dept (id, dept_name, status)
 VALUES
     (1, '平台部', 1),

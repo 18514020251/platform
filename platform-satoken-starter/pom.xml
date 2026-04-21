@@ -39,5 +39,14 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-core</artifactId>
+            <version>${sa-token.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.xcvk.platform</groupId>
+            <artifactId>platform-common</artifactId>
+        </dependency>
     </dependencies>
 </project>

@@ -20,7 +20,7 @@ import lombok.experimental.Accessors;
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
 @TableName("wf_ticket")
-public class WfTicket implements Serializable {
+public class Ticket implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

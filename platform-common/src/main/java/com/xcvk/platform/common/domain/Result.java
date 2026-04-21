@@ -27,14 +27,6 @@ public class Result<T> implements Serializable {
     @SuppressWarnings("java:S1948")
     private T data;
 
-    public static <T> Result<T> success() {
-        return new Result<>(
-                ErrorCode.SUCCESS.getCode(),
-                ErrorCode.SUCCESS.getMessage(),
-                null
-        );
-    }
-
     public static <T> Result<T> success(T data) {
         return new Result<>(
                 ErrorCode.SUCCESS.getCode(),

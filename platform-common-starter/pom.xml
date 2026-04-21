@@ -26,18 +26,11 @@
             <artifactId>platform-common</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.mybatis</groupId>
-            <artifactId>mybatis</artifactId>
-            <version>3.5.19</version>
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-core</artifactId>
-            <version>3.5.11</version>
+            <version>${mybatis-plus.version}</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
-
 
 </project>

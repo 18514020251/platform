@@ -3,6 +3,7 @@ package com.xcvk.platform.auth.starter.config;
 import cn.dev33.satoken.dao.SaTokenDao;
 import cn.dev33.satoken.dao.SaTokenDaoRedisJackson;
 import cn.dev33.satoken.stp.StpInterface;
+import com.xcvk.platform.auth.starter.handler.SaTokenExceptionHandler;
 import com.xcvk.platform.auth.starter.security.SessionStpInterface;
 import com.xcvk.platform.auth.starter.startup.SaTokenDaoChecker;
 import com.xcvk.platform.auth.starter.util.SaTokenSessionUtils;
@@ -56,5 +57,11 @@ public class SaTokenAutoConfiguration {
     @ConditionalOnMissingBean
     public SaTokenDaoChecker saTokenDaoChecker() {
         return new SaTokenDaoChecker();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SaTokenExceptionHandler saTokenExceptionHandler() {
+        return new SaTokenExceptionHandler();
     }
 }
