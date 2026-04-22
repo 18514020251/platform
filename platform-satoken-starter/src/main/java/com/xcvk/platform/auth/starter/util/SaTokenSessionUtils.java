@@ -43,7 +43,7 @@ public class SaTokenSessionUtils {
      * @return 当前登录身份信息
      */
     public CurrentLoginIdentity getCurrentLoginIdentity() {
-        Long userId = Long.valueOf(String.valueOf(StpUtil.getLoginId()));
+        Long userId = SaTokenUtils.getCurrentUserId();
         return getLoginIdentityByLoginId(userId);
     }
 
@@ -54,7 +54,7 @@ public class SaTokenSessionUtils {
      * @return 登录身份信息
      */
     public CurrentLoginIdentity getLoginIdentityByLoginId(Object loginId) {
-        Long userId = Long.valueOf(String.valueOf(loginId));
+        Long userId = SaTokenUtils.getCurrentUserId();
         SaSession session = StpUtil.getSessionByLoginId(loginId);
 
         String username = getStringValue(session.get(SaTokenSessionConstants.USERNAME));

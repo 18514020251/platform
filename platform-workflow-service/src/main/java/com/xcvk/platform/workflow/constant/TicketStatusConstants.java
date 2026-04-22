@@ -21,4 +21,14 @@ public class TicketStatusConstants {
      */
     public static final String PROCESSING = "PROCESSING";
 
+    /**
+     * 工单已解决
+     */
+    public static final String RESOLVED = "RESOLVED";
+
+    /**
+     * 工单已拒绝
+     */
+    public static final String REJECTED = "REJECTED";
+
 }

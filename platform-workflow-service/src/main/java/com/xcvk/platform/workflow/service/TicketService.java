@@ -3,6 +3,7 @@ package com.xcvk.platform.workflow.service;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.common.domain.PageResult;
 import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
+import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
 import com.xcvk.platform.workflow.model.query.MyTicketQuery;
 import com.xcvk.platform.workflow.model.query.TicketManageQuery;
 import com.xcvk.platform.workflow.model.vo.CreateTicketResponse;
@@ -77,4 +78,19 @@ public interface TicketService {
      * @param ticketId 工单ID
      */
     void acceptTicket(CurrentLoginIdentity identity, Long ticketId);
+
+    /**
+     * 更新工单状态
+     *
+     * <p>当前阶段该方法只负责将“处理中”的工单推进到最终处理结果，
+     * 即更新为已解决或已拒绝。</p>
+     *
+     * <p>为避免状态更新覆盖问题，
+     * 最终落库时应基于当前状态做条件更新。</p>
+     *
+     * @param identity 当前登录身份
+     * @param ticketId 工单ID
+     * @param request 更新状态请求
+     */
+    void updateTicketStatus(CurrentLoginIdentity identity, Long ticketId, UpdateTicketStatusRequest request);
 }

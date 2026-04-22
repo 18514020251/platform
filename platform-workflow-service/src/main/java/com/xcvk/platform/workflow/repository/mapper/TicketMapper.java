@@ -37,4 +37,25 @@ public interface TicketMapper extends BaseMapper<Ticket> {
                      @Param("assigneeName") String assigneeName,
                      @Param("fromStatus") String fromStatus,
                      @Param("toStatus") String toStatus);
+
+
+    /**
+     * 条件更新工单状态
+     *
+     * <p>该方法用于处理侧更新工单状态时的最终落库操作。
+     * 当前阶段要求更新动作只能作用于“当前状态未发生变化”的工单，
+     * 以避免并发下状态覆盖。</p>
+     *
+     * @param ticketId 工单ID
+     * @param assigneeId 当前处理人ID
+     * @param currentStatus 当前状态
+     * @param targetStatus 目标状态
+     * @param statusRemark 当前状态说明
+     * @return 影响行数
+     */
+    int updateTicketStatus(@Param("ticketId") Long ticketId,
+                           @Param("assigneeId") Long assigneeId,
+                           @Param("currentStatus") String currentStatus,
+                           @Param("targetStatus") String targetStatus,
+                           @Param("statusRemark") String statusRemark);
 }

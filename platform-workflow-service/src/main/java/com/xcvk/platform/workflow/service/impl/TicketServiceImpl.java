@@ -15,6 +15,7 @@ import com.xcvk.platform.workflow.constant.TicketErrorMessages;
 import com.xcvk.platform.workflow.constant.TicketSourceConstants;
 import com.xcvk.platform.workflow.constant.TicketStatusConstants;
 import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
+import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
 import com.xcvk.platform.workflow.model.entity.Ticket;
 import com.xcvk.platform.workflow.model.entity.TicketType;
 import com.xcvk.platform.workflow.model.query.MyTicketQuery;
@@ -34,6 +35,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 工单服务实现类
@@ -57,6 +59,8 @@ import java.util.List;
 public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> implements TicketService {
 
     private static final String DEFAULT_PRIORITY = "MEDIUM";
+    private static final Set<String> ALLOWED_UPDATE_TARGET_STATUS =
+            Set.of(TicketStatusConstants.RESOLVED, TicketStatusConstants.REJECTED);
 
     private final TicketTypeService ticketTypeService;
     private final SnowflakeIdGenerator idGenerator;
@@ -320,7 +324,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      */
     @Override
     public PageResult<TicketManageListItemVO> pageManageTickets(CurrentLoginIdentity identity, TicketManageQuery query) {
-        BizAssert.notNull(identity, ErrorCode.PARAM_INVALID, "当前登录身份不能为空");
+        validateCurrentLoginIdentity(identity);
         BizAssert.notNull(query, ErrorCode.PARAM_INVALID, TicketErrorMessages.QUERY_REQUIRED);
 
         int pageNum = query.safePageNum();
@@ -473,6 +477,15 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     }
 
     /**
+     * 校验当前登录身份
+     *
+     * @param identity 当前登录身份
+     * */
+    private void validateCurrentLoginIdentity(CurrentLoginIdentity identity) {
+        BizAssert.notNull(identity, ErrorCode.PARAM_INVALID, TicketErrorMessages.CURRENT_LOGIN_IDENTITY_REQUIRED);
+    }
+
+    /**
      * 接单。
      *
      * <p>接单是处理侧的“唯一占用动作”，
@@ -492,7 +505,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      */
     @Override
     public void acceptTicket(CurrentLoginIdentity identity, Long ticketId) {
-        BizAssert.notNull(identity, ErrorCode.PARAM_INVALID, "当前登录身份不能为空");
+        validateCurrentLoginIdentity(identity);
         BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
 
         validateAcceptPermission(identity);
@@ -562,6 +575,133 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 TicketStatusConstants.PENDING.equals(ticket.getStatus()),
                 ErrorCode.BIZ_ERROR,
                 TicketErrorMessages.TICKET_STATUS_NOT_ALLOW_ACCEPT
+        );
+    }
+
+
+    /**
+     * 更新工单状态。
+     *
+     * <p>当前阶段该方法只负责将“处理中”的工单推进到最终处理结果，
+     * 即更新为已解决或已拒绝。</p>
+     *
+     * <p>状态更新前需要完成三类校验：</p>
+     * <ul>
+     *     <li>参数校验：目标状态与状态说明是否合法</li>
+     *     <li>权限校验：当前用户是否为管理员或当前接单人</li>
+     *     <li>流转校验：当前工单是否处于允许更新的状态</li>
+     * </ul>
+     *
+     * <p>最终落库采用数据库条件更新，
+     * 避免并发下发生状态覆盖问题。</p>
+     *
+     * @param identity 当前登录身份
+     * @param ticketId 工单ID
+     * @param request 更新状态请求
+     */
+    @Override
+    public void updateTicketStatus(CurrentLoginIdentity identity, Long ticketId, UpdateTicketStatusRequest request) {
+        validateCurrentLoginIdentity(identity);
+        BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
+        BizAssert.notNull(request, ErrorCode.PARAM_INVALID, TicketErrorMessages.QUERY_REQUIRED);
+
+        validateUpdateTicketStatusRequest(request);
+
+        Ticket ticket = getById(ticketId);
+        BizAssert.notNull(ticket, ErrorCode.BIZ_ERROR, TicketErrorMessages.TICKET_NOT_FOUND);
+
+        validateUpdateStatusPermission(identity, ticket);
+        validateStatusTransition(ticket, request.targetStatus());
+
+        int rows = baseMapper.updateTicketStatus(
+                ticketId,
+                ticket.getAssigneeId(),
+                ticket.getStatus(),
+                safeTrim(request.targetStatus()),
+                safeTrim(request.statusRemark())
+        );
+
+        DbAssert.affectedOne(rows, TicketErrorMessages.TICKET_STATUS_UPDATE_CONFLICT);
+    }
+
+    /**
+     * 校验更新工单状态请求。
+     *
+     * <p>当前阶段状态更新接口只允许将工单更新为已解决或已拒绝，
+     * 并要求必须同时填写状态说明，
+     * 用于向员工侧展示处理结果或拒绝原因。</p>
+     *
+     * @param request 更新状态请求
+     */
+    private void validateUpdateTicketStatusRequest(UpdateTicketStatusRequest request) {
+        BizAssert.hasText(
+                request.targetStatus(),
+                ErrorCode.PARAM_INVALID,
+                TicketErrorMessages.STATUS_TARGET_REQUIRED
+        );
+        BizAssert.hasText(
+                request.statusRemark(),
+                ErrorCode.PARAM_INVALID,
+                TicketErrorMessages.STATUS_REMARK_REQUIRED
+        );
+
+        String targetStatus = safeTrim(request.targetStatus());
+        BizAssert.isTrue(
+                ALLOWED_UPDATE_TARGET_STATUS.contains(targetStatus),
+                ErrorCode.PARAM_INVALID,
+                TicketErrorMessages.STATUS_TARGET_INVALID
+        );
+    }
+
+    /**
+     * 校验更新工单状态权限。
+     *
+     * <p>当前阶段允许两类用户更新工单状态：</p>
+     * <ul>
+     *     <li>管理员</li>
+     *     <li>当前工单接单人</li>
+     * </ul>
+     *
+     * <p>这样做的目的是既保证处理人可以推进自己负责工单的状态，
+     * 也保留管理员在特殊场景下的兜底处理能力。</p>
+     *
+     * @param identity 当前登录身份
+     * @param ticket 工单实体
+     */
+    private void validateUpdateStatusPermission(CurrentLoginIdentity identity, Ticket ticket) {
+        boolean isAdmin = hasRole(identity.roleCodes(), PlatformRoleConstants.ADMIN);
+        boolean isAssignee = identity.userId() != null && identity.userId().equals(ticket.getAssigneeId());
+
+        BizAssert.isTrue(
+                isAdmin || isAssignee,
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.STATUS_UPDATE_PERMISSION_DENIED
+        );
+    }
+
+    /**
+     * 校验状态流转是否合法。
+     *
+     * <p>当前阶段状态更新接口只负责处理“处理中”工单的最终结果推进，
+     * 因此只有处于 PROCESSING 状态的工单才允许通过该接口更新状态。</p>
+     *
+     * <p>接单动作负责将工单从 PENDING 推进到 PROCESSING，
+     * 不允许通过该接口直接替代接单动作。</p>
+     *
+     * @param ticket 工单实体
+     * @param targetStatus 目标状态
+     */
+    private void validateStatusTransition(Ticket ticket, String targetStatus) {
+        BizAssert.isTrue(
+                TicketStatusConstants.PROCESSING.equals(ticket.getStatus()),
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.TICKET_STATUS_NOT_ALLOW_UPDATE
+        );
+
+        BizAssert.isTrue(
+                ALLOWED_UPDATE_TARGET_STATUS.contains(safeTrim(targetStatus)),
+                ErrorCode.PARAM_INVALID,
+                TicketErrorMessages.STATUS_TARGET_INVALID
         );
     }
 }

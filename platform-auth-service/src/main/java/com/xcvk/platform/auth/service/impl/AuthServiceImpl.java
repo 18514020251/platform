@@ -18,7 +18,6 @@ import com.xcvk.platform.auth.repository.mapper.SysUserRoleMapper;
 import com.xcvk.platform.auth.service.AuthCacheService;
 import com.xcvk.platform.auth.service.AuthService;
 import com.xcvk.platform.auth.starter.util.SaTokenSessionUtils;
-import com.xcvk.platform.common.exception.BusinessException;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
 import com.xcvk.platform.common.util.PasswordUtils;

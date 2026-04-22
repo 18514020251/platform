@@ -33,6 +33,7 @@ public final class TicketErrorMessages {
     public static final String TICKET_NOT_FOUND_OR_NO_PERMISSION = "工单不存在或无权限查看";
     public static final String TICKET_TYPE_NOT_FOUND_OR_DISABLED = "工单类型不存在或状态异常";
     public static final String MANAGE_PERMISSION_DENIED = "当前用户无权限查看处理侧工单";
+    public static final String CURRENT_LOGIN_IDENTITY_REQUIRED = "当前登录身份不能为空";
 
     /**
      * 接单相关异常文案
@@ -43,4 +44,14 @@ public final class TicketErrorMessages {
     public static final String TICKET_ALREADY_ASSIGNED = "当前工单已被接单";
     public static final String TICKET_ACCEPT_FAILED = "工单接单失败";
     public static final String TICKET_ALREADY_ACCEPTED_OR_STATUS_CHANGED = "工单已被其他人员接单或当前状态不可接单";
+
+    /**
+     * 状态更新相关异常文案
+     */
+    public static final String STATUS_TARGET_REQUIRED = "目标状态不能为空";
+    public static final String STATUS_REMARK_REQUIRED = "状态说明不能为空";
+    public static final String STATUS_TARGET_INVALID = "目标状态非法";
+    public static final String STATUS_UPDATE_PERMISSION_DENIED = "当前用户无权限更新工单状态";
+    public static final String TICKET_STATUS_NOT_ALLOW_UPDATE = "当前工单状态不允许更新";
+    public static final String TICKET_STATUS_UPDATE_CONFLICT = "工单状态已变更，请刷新后重试";
 }

@@ -12,6 +12,7 @@ import com.xcvk.platform.log.starter.annotation.AccessLog;
 import com.xcvk.platform.workflow.constant.TicketSourceConstants;
 import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
 import com.xcvk.platform.workflow.model.dto.CreateTicketRequest;
+import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
 import com.xcvk.platform.workflow.model.query.MyTicketQuery;
 import com.xcvk.platform.workflow.model.query.TicketManageQuery;
 import com.xcvk.platform.workflow.model.vo.CreateTicketResponse;
@@ -170,6 +171,35 @@ public class TicketController {
     public Result<Void> acceptTicket(@PathVariable("ticketId") Long ticketId) {
         CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
         ticketService.acceptTicket(identity, ticketId);
+        return Result.successVoid();
+    }
+
+    /**
+     * 更新工单状态
+     *
+     * <p>该接口面向支持人员与管理员使用，
+     * 用于将当前正在处理的工单更新为已解决或已拒绝。</p>
+     *
+     * <p>接口入口先通过角色注解做准入控制，
+     * 具体是否允许操作该工单、当前状态是否允许流转，
+     * 统一由 Service 层继续处理。</p>
+     *
+     * @param ticketId 工单ID
+     * @param request 更新状态请求
+     * @return 成功响应
+     */
+    @PutMapping("/{ticketId}/status")
+    @SaCheckLogin
+    @SaCheckRole(
+            value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT},
+            mode = SaMode.OR
+    )
+    @AccessLog(value = "更新工单状态", recordArgs = true, recordResult = false)
+    @Operation(summary = "更新工单状态", description = "支持人员或管理员更新工单状态")
+    public Result<Void> updateTicketStatus(@PathVariable("ticketId") Long ticketId,
+                                           @Valid @RequestBody UpdateTicketStatusRequest request) {
+        CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
+        ticketService.updateTicketStatus(identity, ticketId, request);
         return Result.successVoid();
     }
 }

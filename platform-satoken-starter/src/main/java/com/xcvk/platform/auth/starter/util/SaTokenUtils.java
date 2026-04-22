@@ -18,7 +18,7 @@ public class SaTokenUtils {
      *
      * @return 当前登录用户ID
      */
-    public Long getCurrentUserId() {
+    public static Long getCurrentUserId() {
         return Long.valueOf(String.valueOf(StpUtil.getLoginId()));
     }
 }
