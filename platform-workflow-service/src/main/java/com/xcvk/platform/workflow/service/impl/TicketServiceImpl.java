@@ -304,6 +304,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 ticket.getCreatorName(),
                 ticket.getAssigneeId(),
                 ticket.getAssigneeName(),
+                ticket.getStatusRemark(),
                 ticket.getClosedAt(),
                 ticket.getCreatedAt(),
                 ticket.getUpdatedAt()

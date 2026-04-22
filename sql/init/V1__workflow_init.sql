@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS wf_ticket (
     assignee_id       BIGINT       DEFAULT NULL COMMENT '当前处理人ID',
     assignee_name     VARCHAR(64)  DEFAULT NULL COMMENT '当前处理人名称快照',
     closed_at         DATETIME     DEFAULT NULL COMMENT '关闭时间',
+    status_remark     VARCHAR(500) DEFAULT NULL comment '当前状态说明/处理备注',
     created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     UNIQUE KEY uk_wf_ticket_ticket_no (ticket_no),

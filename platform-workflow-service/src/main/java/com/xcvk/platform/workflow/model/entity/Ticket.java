@@ -2,6 +2,7 @@ package com.xcvk.platform.workflow.model.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 
+import java.io.Serial;
 import java.time.LocalDateTime;
 import java.io.Serializable;
 import lombok.Data;
@@ -22,6 +23,7 @@ import lombok.experimental.Accessors;
 @TableName("wf_ticket")
 public class Ticket implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
@@ -104,6 +106,11 @@ public class Ticket implements Serializable {
      * 关闭时间
      */
     private LocalDateTime closedAt;
+
+    /**
+     * 当前状态说明/处理备注
+     * */
+    private String statusRemark;
 
     /**
      * 创建时间

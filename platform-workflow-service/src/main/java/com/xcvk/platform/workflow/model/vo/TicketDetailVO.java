@@ -30,6 +30,7 @@ public record TicketDetailVO(
         String creatorName,
         Long assigneeId,
         String assigneeName,
+        String statusRemark,
         LocalDateTime closedAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
