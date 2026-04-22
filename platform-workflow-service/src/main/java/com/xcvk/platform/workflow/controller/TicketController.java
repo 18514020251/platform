@@ -11,6 +11,7 @@ import com.xcvk.platform.common.domain.Result;
 import com.xcvk.platform.log.starter.annotation.AccessLog;
 import com.xcvk.platform.workflow.constant.TicketSourceConstants;
 import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
+import com.xcvk.platform.workflow.model.dto.AssignTicketRequest;
 import com.xcvk.platform.workflow.model.dto.CreateTicketRequest;
 import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
 import com.xcvk.platform.workflow.model.query.MyTicketQuery;
@@ -200,6 +201,19 @@ public class TicketController {
                                            @Valid @RequestBody UpdateTicketStatusRequest request) {
         CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
         ticketService.updateTicketStatus(identity, ticketId, request);
+        return Result.successVoid();
+    }
+
+    @PostMapping("/manage/{ticketId}/assign")
+    @SaCheckLogin
+    @SaCheckRole(PlatformRoleConstants.ADMIN)
+    @AccessLog(value = "工单分配", recordArgs = true, recordResult = false)
+    @Operation(summary = "工单分配", description = "管理员分配工单")
+    public Result<Void> assignTicket(
+            @PathVariable("ticketId") Long ticketId,
+            @RequestBody AssignTicketRequest request
+    ) {
+        ticketService.assignTicket(saTokenSessionUtils.getCurrentLoginIdentity(), ticketId, request);
         return Result.successVoid();
     }
 }

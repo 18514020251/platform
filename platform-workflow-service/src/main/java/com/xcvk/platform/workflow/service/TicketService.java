@@ -3,6 +3,7 @@ package com.xcvk.platform.workflow.service;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.common.domain.PageResult;
 import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
+import com.xcvk.platform.workflow.model.dto.AssignTicketRequest;
 import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
 import com.xcvk.platform.workflow.model.query.MyTicketQuery;
 import com.xcvk.platform.workflow.model.query.TicketManageQuery;
@@ -93,4 +94,16 @@ public interface TicketService {
      * @param request 更新状态请求
      */
     void updateTicketStatus(CurrentLoginIdentity identity, Long ticketId, UpdateTicketStatusRequest request);
+
+    /**
+     * 管理员派发工单
+     *
+     * <p>当前阶段该方法只负责将“待处理”工单分配给指定处理人，
+     * 并同步将工单状态推进到处理中。</p>
+     *
+     * @param identity 当前登录身份
+     * @param ticketId 工单ID
+     * @param request  管理员指定的接单人对象
+     * */
+    void assignTicket(CurrentLoginIdentity identity, Long ticketId, AssignTicketRequest request);
 }

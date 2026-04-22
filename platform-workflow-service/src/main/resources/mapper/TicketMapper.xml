@@ -36,4 +36,21 @@
           AND status = #{currentStatus}
     </update>
 
+    <!--
+        分配工单
+        条件处理工单：
+        只有当工单当前处理人和当前状态均未发生变化时才允许更新，
+        用于避免并发下的状态覆盖问题。
+    -->
+    <update id="assignTicket">
+        UPDATE wf_ticket
+        SET assignee_id = #{assigneeId},
+            assignee_name = #{assigneeName},
+            status = #{targetStatus},
+            updated_at = NOW()
+        WHERE id = #{ticketId}
+          AND status = #{expectedStatus}
+          AND assignee_id IS NULL
+    </update>
+
 </mapper>

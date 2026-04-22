@@ -15,6 +15,7 @@ import com.xcvk.platform.workflow.constant.TicketErrorMessages;
 import com.xcvk.platform.workflow.constant.TicketSourceConstants;
 import com.xcvk.platform.workflow.constant.TicketStatusConstants;
 import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
+import com.xcvk.platform.workflow.model.dto.AssignTicketRequest;
 import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
 import com.xcvk.platform.workflow.model.entity.Ticket;
 import com.xcvk.platform.workflow.model.entity.TicketType;
@@ -702,6 +703,98 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 ALLOWED_UPDATE_TARGET_STATUS.contains(safeTrim(targetStatus)),
                 ErrorCode.PARAM_INVALID,
                 TicketErrorMessages.STATUS_TARGET_INVALID
+        );
+    }
+
+    /**
+     * 校验工单分配请求。
+     *
+     * <p>当前阶段工单分配接口只允许将工单分配给指定处理人，
+     * 并要求工单当前状态为“待处理”。</p>
+     *
+     * @param request 工单分配请求
+     */
+    // TODO 后续修改逻辑，处理目标用户名不应该由前端传递
+    @Override
+    public void assignTicket(CurrentLoginIdentity identity, Long ticketId, AssignTicketRequest request) {
+        validateCurrentLoginIdentity(identity);
+        BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
+        BizAssert.notNull(request, ErrorCode.PARAM_INVALID, TicketErrorMessages.ASSIGN_REQUEST_REQUIRED);
+
+        validateAssignTicketRequest(request);
+        validateAssignPermission(identity);
+
+        Ticket ticket = getById(ticketId);
+        BizAssert.notNull(ticket, ErrorCode.BIZ_ERROR, TicketErrorMessages.TICKET_NOT_FOUND);
+
+        validateAssignPreCheck(ticket);
+
+        int rows = baseMapper.assignTicket(
+                ticketId,
+                request.assigneeId(),
+                safeTrim(request.assigneeName()),
+                TicketStatusConstants.PENDING,
+                TicketStatusConstants.PROCESSING
+        );
+
+        DbAssert.affectedOne(rows, TicketErrorMessages.TICKET_ALREADY_ASSIGNED_OR_STATUS_CHANGED);
+    }
+
+    /**
+     * 校验工单分配请求。
+     *
+     * <p>当前阶段工单分配接口只允许将工单分配给指定处理人，
+     * 并要求工单当前状态为“待处理”。</p>
+     *
+     * @param request 工单分配请求
+     */
+    private void validateAssignTicketRequest(AssignTicketRequest request) {
+        BizAssert.notNull(
+                request.assigneeId(),
+                ErrorCode.PARAM_INVALID,
+                TicketErrorMessages.ASSIGNEE_ID_REQUIRED
+        );
+        BizAssert.hasText(
+                request.assigneeName(),
+                ErrorCode.PARAM_INVALID,
+                TicketErrorMessages.ASSIGNEE_NAME_REQUIRED
+        );
+    }
+
+    /**
+     * 校验工单分配权限。
+     *
+     * <p>当前阶段工单分配接口只允许管理员分配工单。</p>
+     *
+     * @param identity 当前登录身份
+     */
+    private void validateAssignPermission(CurrentLoginIdentity identity) {
+        BizAssert.isTrue(
+                hasRole(identity.roleCodes(), PlatformRoleConstants.ADMIN),
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.ASSIGN_PERMISSION_DENIED
+        );
+    }
+
+    /**
+     * 校验工单分配前置条件。
+     *
+     * <p>当前阶段工单分配接口只允许将工单分配给指定处理人，
+     * 并要求工单当前状态为“待处理”。</p>
+     *
+     * @param ticket 工单实体
+     */
+    private void validateAssignPreCheck(Ticket ticket) {
+        BizAssert.isNull(
+                ticket.getAssigneeId(),
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.TICKET_ALREADY_ASSIGNED
+        );
+
+        BizAssert.isTrue(
+                TicketStatusConstants.PENDING.equals(ticket.getStatus()),
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.TICKET_STATUS_NOT_ALLOW_ASSIGN
         );
     }
 }

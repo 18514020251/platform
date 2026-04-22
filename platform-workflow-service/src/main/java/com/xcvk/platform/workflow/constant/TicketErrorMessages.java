@@ -36,6 +36,16 @@ public final class TicketErrorMessages {
     public static final String CURRENT_LOGIN_IDENTITY_REQUIRED = "当前登录身份不能为空";
 
     /**
+     * 派单相关异常文案
+     */
+    public static final String ASSIGN_REQUEST_REQUIRED = "派发请求不能为空";
+    public static final String ASSIGNEE_ID_REQUIRED = "处理人ID不能为空";
+    public static final String ASSIGNEE_NAME_REQUIRED = "处理人姓名不能为空";
+    public static final String ASSIGN_PERMISSION_DENIED = "无权限派发工单";
+    public static final String TICKET_STATUS_NOT_ALLOW_ASSIGN = "当前工单状态不允许派发";
+    public static final String TICKET_ALREADY_ASSIGNED_OR_STATUS_CHANGED = "工单已被派发或状态已变化";
+
+    /**
      * 接单相关异常文案
      */
     public static final String ACCEPT_PERMISSION_DENIED = "当前用户无权限接单";

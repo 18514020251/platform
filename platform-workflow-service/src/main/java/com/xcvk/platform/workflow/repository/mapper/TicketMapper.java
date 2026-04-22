@@ -58,4 +58,20 @@ public interface TicketMapper extends BaseMapper<Ticket> {
                            @Param("currentStatus") String currentStatus,
                            @Param("targetStatus") String targetStatus,
                            @Param("statusRemark") String statusRemark);
+
+    /**
+     * 管理员指定工单
+     * @param ticketId 工单ID
+     * @param assigneeId 当前处理人ID
+     * @param assigneeName 处理人Name
+     * @param targetStatus 目标状态
+     * @param expectedStatus 当前状态说明
+     * @return 影响行数
+     * */
+    int assignTicket(@Param("ticketId") Long ticketId,
+                     @Param("assigneeId") Long assigneeId,
+                     @Param("assigneeName") String assigneeName,
+                     @Param("expectedStatus") String expectedStatus,
+                     @Param("targetStatus")  String targetStatus
+    );
 }
