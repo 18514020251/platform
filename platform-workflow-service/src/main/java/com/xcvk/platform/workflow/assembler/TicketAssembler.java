@@ -83,6 +83,43 @@ public class TicketAssembler {
     }
 
     /**
+     * 将工单搜索索引对象转换为处理侧列表项视图对象。
+     *
+     * <p>当搜索结果中包含标题高亮片段时，优先使用高亮标题，
+     * 否则回退到原始标题。</p>
+     *
+     * @param ticketIndex 工单搜索索引对象
+     * @param highlightTitle 标题高亮内容
+     * @return 处理侧工单列表项
+     */
+    public TicketManageListItemVO toTicketManageListItemVO(TicketIndex ticketIndex, String highlightTitle) {
+        if (ticketIndex == null) {
+            return null;
+        }
+
+        String finalTitle = (highlightTitle != null && !highlightTitle.isBlank())
+                ? highlightTitle
+                : ticketIndex.getTitle();
+
+        return new TicketManageListItemVO(
+                ticketIndex.getId(),
+                ticketIndex.getTicketNo(),
+                ticketIndex.getTicketTypeCode(),
+                ticketIndex.getTicketTypeName(),
+                finalTitle,
+                ticketIndex.getStatus(),
+                ticketIndex.getPriority(),
+                ticketIndex.getSource(),
+                ticketIndex.getCreatorId(),
+                ticketIndex.getCreatorName(),
+                ticketIndex.getAssigneeId(),
+                ticketIndex.getAssigneeName(),
+                ticketIndex.getCreatedAt(),
+                ticketIndex.getUpdatedAt()
+        );
+    }
+
+    /**
      * 将工单实体转换为详情视图对象。
      *
      * @param ticket 工单实体

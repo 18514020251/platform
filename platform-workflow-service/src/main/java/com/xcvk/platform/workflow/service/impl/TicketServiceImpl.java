@@ -32,6 +32,7 @@ import com.xcvk.platform.workflow.search.repository.TicketIndexRepository;
 import com.xcvk.platform.workflow.service.TicketService;
 import com.xcvk.platform.workflow.service.TicketTypeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -59,6 +60,7 @@ import java.util.Set;
  * @date 2026-04-20
  */
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> implements TicketService {
 
@@ -104,15 +106,47 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     }
 
     /**
-     *  同步工单到搜索索引
-     * */
-    // TODO if null return 提取？
+     * 同步工单到搜索索引。
+     *
+     * <p>当前阶段 Elasticsearch 作为搜索副本，不属于主业务真相来源，
+     * 因此同步失败不直接中断主业务流程，而是记录错误日志，便于后续排查和补偿。</p>
+     *
+     * <p>后续如引入搜索补偿任务表或 MQ 异步同步机制，
+     * 可在 catch 分支中扩展失败记录逻辑。</p>
+     *
+     * @param ticket 工单实体
+     */
+    // TODO if null return 提取
     private void syncTicketToSearchIndex(Ticket ticket) {
         if (ticket == null) {
             return;
         }
-        ticketIndexRepository.save(ticketSearchAssembler.toIndex(ticket));
+
+        try {
+            ticketIndexRepository.save(ticketSearchAssembler.toIndex(ticket));
+            log.info("同步工单到搜索索引成功：{}", ticket.getId());
+        } catch (Exception ex) {
+            log.error("同步工单到搜索索引失败，ticketId={}", ticket.getId(), ex);
+        }
     }
+
+    /**
+     *  同步工单到搜索索引
+     * */
+    private void syncTicketToSearchIndex(Long ticketId) {
+        if (ticketId == null) {
+            return;
+        }
+
+        Ticket latestTicket = getById(ticketId);
+        if (latestTicket == null) {
+            return;
+        }
+
+        syncTicketToSearchIndex(latestTicket);
+    }
+
+
 
     /**
      * 校验创建工单命令对象的基础必填字段。
@@ -468,8 +502,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 TicketStatusConstants.PROCESSING
         );
 
+        DbAssert.affectedOne(rows, TicketErrorMessages.TICKET_ALREADY_ACCEPTED_OR_STATUS_CHANGED);
 
-        DbAssert.affectedOne(rows,TicketErrorMessages.TICKET_ALREADY_ACCEPTED_OR_STATUS_CHANGED);
+        syncTicketToSearchIndex(ticketId);
     }
 
     /**
@@ -567,6 +602,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         );
 
         DbAssert.affectedOne(rows, TicketErrorMessages.TICKET_STATUS_UPDATE_CONFLICT);
+
+        syncTicketToSearchIndex(ticketId);
     }
 
     /**
@@ -682,6 +719,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         );
 
         DbAssert.affectedOne(rows, TicketErrorMessages.TICKET_ALREADY_ASSIGNED_OR_STATUS_CHANGED);
+
+        syncTicketToSearchIndex(ticketId);
     }
 
     /**

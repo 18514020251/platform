@@ -19,11 +19,17 @@ import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
 import org.springframework.data.elasticsearch.core.SearchHits;
+import org.springframework.data.elasticsearch.core.query.HighlightQuery;
+import org.springframework.data.elasticsearch.core.query.highlight.HighlightParameters;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.data.elasticsearch.core.query.highlight.Highlight;
+import org.springframework.data.elasticsearch.core.query.highlight.HighlightField;
 import org.springframework.util.StringUtils;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders.*;
 
@@ -77,13 +83,26 @@ public class TicketSearchServiceImpl implements TicketSearchService {
                 .withQuery(boolQuery.build()._toQuery())
                 .withPageable(PageRequest.of(pageNum - 1, pageSize))
                 .withSort(Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("createdAt")))
+                .withHighlightQuery(new HighlightQuery(
+                        new Highlight(
+                                HighlightParameters.builder()
+                                        .withPreTags("<em>")
+                                        .withPostTags("</em>")
+                                        .build(),
+                                List.of(new HighlightField("title"))
+                        ),
+                        TicketIndex.class
+                ))
                 .build();
 
         SearchHits<TicketIndex> searchHits = elasticsearchOperations.search(searchQuery, TicketIndex.class);
 
         List<TicketManageListItemVO> records = searchHits.getSearchHits().stream()
-                .map(SearchHit::getContent)
-                .map(ticketAssembler::toTicketManageListItemVO)
+                .map(searchHit -> {
+                    TicketIndex ticketIndex = searchHit.getContent();
+                    String highlightTitle = extractHighlightTitle(searchHit);
+                    return ticketAssembler.toTicketManageListItemVO(ticketIndex, highlightTitle);
+                })
                 .toList();
 
         long total = searchHits.getTotalHits();
@@ -99,7 +118,7 @@ public class TicketSearchServiceImpl implements TicketSearchService {
      *     <li>管理员：可查看全部</li>
      *     <li>支持人员 + mineOnly=true：仅查看分配给自己的工单</li>
      *     <li>支持人员 + unassignedOnly=true：仅查看未分派工单</li>
-     *     <li>支持人员默认：查看“分配给自己”或“未分派”的工单</li>
+     *     <li>支持人员默认：查看"分配给自己"或"未分派"的工单</li>
      * </ul>
      *
      * @param boolQuery bool 查询构造器
@@ -157,6 +176,7 @@ public class TicketSearchServiceImpl implements TicketSearchService {
             boolQuery.must(q -> q.bool(b -> b
                     .should(term(t -> t.field("ticketNo").value(keyword)))
                     .should(match(m -> m.field("title").query(keyword)))
+                    .should(match(m -> m.field("content").query(keyword)))
                     .minimumShouldMatch("1")
             ));
         }
@@ -180,6 +200,33 @@ public class TicketSearchServiceImpl implements TicketSearchService {
         if (query.assigneeId() != null) {
             boolQuery.filter(term(t -> t.field("assigneeId").value(query.assigneeId())));
         }
+    }
+
+    /**
+     * 提取标题高亮内容。
+     *
+     * <p>如果当前搜索结果命中了 title 字段并返回高亮片段，
+     * 则优先使用高亮后的标题；否则返回 null，由装配层回退到原始标题。</p>
+     *
+     * @param searchHit ES 搜索结果项
+     * @return 高亮标题；若无高亮则返回 null
+     */
+    private String extractHighlightTitle(SearchHit<TicketIndex> searchHit) {
+        if (searchHit == null) {
+            return null;
+        }
+
+        Map<String, List<String>> highlightFields = searchHit.getHighlightFields();
+        if (highlightFields == null || highlightFields.isEmpty()) {
+            return null;
+        }
+
+        List<String> titleHighlights = highlightFields.getOrDefault("title", Collections.emptyList());
+        if (titleHighlights.isEmpty()) {
+            return null;
+        }
+
+        return titleHighlights.get(0);
     }
 
     /**
