@@ -74,33 +74,65 @@ public class TicketSearchServiceImpl implements TicketSearchService {
         int pageNum = query.safePageNum();
         int pageSize = query.safePageSize();
 
-        var boolQuery = bool();
-
+        BoolQuery.Builder boolQuery = bool();
         applyManagePermissionScope(boolQuery, identity, query);
-
         applyManageQueryFilters(boolQuery, query);
 
-        NativeQuery searchQuery = NativeQuery.builder()
-                .withQuery(boolQuery.build()._toQuery())
-                .withPageable(PageRequest.of(pageNum - 1, pageSize))
-                .withSort(Sort.by(
-                        Sort.Order.desc(TicketSearchFields.UPDATED_AT),
-                        Sort.Order.desc(TicketSearchFields.CREATED_AT)
-                ))
-                .withHighlightQuery(new HighlightQuery(
-                        new Highlight(
-                                HighlightParameters.builder()
-                                        .withPreTags(TicketSearchFields.HIGHLIGHT_PRE_TAG)
-                                        .withPostTags(TicketSearchFields.HIGHLIGHT_POST_TAG)
-                                        .build(),
-                                List.of(new HighlightField(TicketSearchFields.HIGHLIGHT_TITLE))
-                        ),
-                        TicketIndex.class
-                ))
-                .build();
-
+        NativeQuery searchQuery = buildSearchQuery(boolQuery, pageNum, pageSize);
         SearchHits<TicketIndex> searchHits = elasticsearchOperations.search(searchQuery, TicketIndex.class);
 
+        return buildSearchPageResult(searchHits, pageNum, pageSize);
+    }
+
+    /**
+     * 构建工单搜索查询对象。
+     *
+     * <p>统一收口分页、排序和高亮配置，
+     * 避免主流程方法中混入过多 Elasticsearch 查询细节。</p>
+     *
+     * @param boolQuery bool 查询条件
+     * @param pageNum 页码，从 1 开始
+     * @param pageSize 分页大小
+     * @return Elasticsearch 原生查询对象
+     */
+    private NativeQuery buildSearchQuery(BoolQuery.Builder boolQuery, int pageNum, int pageSize) {
+        return NativeQuery.builder()
+                .withQuery(boolQuery.build()._toQuery())
+                .withPageable(PageRequest.of(pageNum - 1, pageSize))
+                .withSort(buildSort())
+                .withHighlightQuery(buildTitleHighlightQuery())
+                .build();
+    }
+
+    /**
+     * 构建工单搜索排序规则。
+     *
+     * <p>当前阶段处理侧列表优先按更新时间倒序，
+     * 更新时间相同则按创建时间倒序。</p>
+     *
+     * @return 排序规则
+     */
+    private Sort buildSort() {
+        return Sort.by(
+                Sort.Order.desc(TicketSearchFields.UPDATED_AT),
+                Sort.Order.desc(TicketSearchFields.CREATED_AT)
+        );
+    }
+
+    /**
+     * 将 Elasticsearch 搜索结果转换为分页返回对象。
+     *
+     * <p>如果搜索结果中存在标题高亮，则优先使用高亮标题；
+     * 否则回退原始标题。</p>
+     *
+     * @param searchHits Elasticsearch 搜索结果
+     * @param pageNum 当前页码
+     * @param pageSize 当前分页大小
+     * @return 处理侧工单分页结果
+     */
+    private PageResult<TicketManageListItemVO> buildSearchPageResult(SearchHits<TicketIndex> searchHits,
+                                                                     int pageNum,
+                                                                     int pageSize) {
         List<TicketManageListItemVO> records = searchHits.getSearchHits().stream()
                 .map(searchHit -> {
                     TicketIndex ticketIndex = searchHit.getContent();
@@ -110,8 +142,28 @@ public class TicketSearchServiceImpl implements TicketSearchService {
                 .toList();
 
         long total = searchHits.getTotalHits();
-
         return PageResult.of(records, total, pageNum, pageSize);
+    }
+
+    /**
+     * 构建标题高亮查询配置。
+     *
+     * <p>当前阶段仅对 title 字段做高亮展示，
+     * 命中部分统一使用 em 标签包裹。</p>
+     *
+     * @return 高亮查询配置
+     */
+    private HighlightQuery buildTitleHighlightQuery() {
+        return new HighlightQuery(
+                new Highlight(
+                        HighlightParameters.builder()
+                                .withPreTags(TicketSearchFields.HIGHLIGHT_PRE_TAG)
+                                .withPostTags(TicketSearchFields.HIGHLIGHT_POST_TAG)
+                                .build(),
+                        List.of(new HighlightField(TicketSearchFields.HIGHLIGHT_TITLE))
+                ),
+                TicketIndex.class
+        );
     }
 
     /**
