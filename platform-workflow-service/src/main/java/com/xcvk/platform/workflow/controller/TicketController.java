@@ -20,6 +20,7 @@ import com.xcvk.platform.workflow.model.vo.CreateTicketResponse;
 import com.xcvk.platform.workflow.model.vo.TicketDetailVO;
 import com.xcvk.platform.workflow.model.vo.TicketListItemVO;
 import com.xcvk.platform.workflow.model.vo.TicketManageListItemVO;
+import com.xcvk.platform.workflow.search.service.TicketSearchService;
 import com.xcvk.platform.workflow.service.TicketService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -53,8 +54,8 @@ import org.springframework.web.bind.annotation.*;
 public class TicketController {
 
     private final TicketService ticketService;
+    private final TicketSearchService ticketSearchService;
     private final SaTokenSessionUtils saTokenSessionUtils;
-
     /**
      * 创建工单
      *
@@ -215,5 +216,18 @@ public class TicketController {
     ) {
         ticketService.assignTicket(saTokenSessionUtils.getCurrentLoginIdentity(), ticketId, request);
         return Result.successVoid();
+    }
+
+    @GetMapping("/search")
+    @SaCheckLogin
+    @SaCheckRole(
+            value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT},
+            mode = SaMode.OR
+    )
+    @AccessLog(value = "ES 搜索处理侧工单列表", recordArgs = false, recordResult = false)
+    @Operation(summary = "ES 搜索处理侧工单列表", description = "基于 Elasticsearch 搜索支持人员或管理员可处理的工单")
+    public Result<PageResult<TicketManageListItemVO>> searchManageTickets(@ModelAttribute TicketManageQuery query) {
+        CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
+        return Result.success(ticketSearchService.searchManageTickets(identity, query));
     }
 }

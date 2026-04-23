@@ -4,6 +4,7 @@ import com.xcvk.platform.workflow.model.entity.Ticket;
 import com.xcvk.platform.workflow.model.vo.TicketDetailVO;
 import com.xcvk.platform.workflow.model.vo.TicketListItemVO;
 import com.xcvk.platform.workflow.model.vo.TicketManageListItemVO;
+import com.xcvk.platform.workflow.search.model.index.TicketIndex;
 import org.springframework.stereotype.Component;
 
 /**
@@ -112,6 +113,29 @@ public class TicketAssembler {
                 ticket.getClosedAt(),
                 ticket.getCreatedAt(),
                 ticket.getUpdatedAt()
+        );
+    }
+
+    public TicketManageListItemVO toTicketManageListItemVO(TicketIndex ticketIndex) {
+        if (ticketIndex == null) {
+            return null;
+        }
+
+        return new TicketManageListItemVO(
+                ticketIndex.getId(),
+                ticketIndex.getTicketNo(),
+                ticketIndex.getTicketTypeCode(),
+                ticketIndex.getTicketTypeName(),
+                ticketIndex.getTitle(),
+                ticketIndex.getStatus(),
+                ticketIndex.getPriority(),
+                ticketIndex.getSource(),
+                ticketIndex.getCreatorId(),
+                ticketIndex.getCreatorName(),
+                ticketIndex.getAssigneeId(),
+                ticketIndex.getAssigneeName(),
+                ticketIndex.getCreatedAt(),
+                ticketIndex.getUpdatedAt()
         );
     }
 }
