@@ -18,6 +18,11 @@ spring:
         namespace: ${NACOS_NAMESPACE:public}
         group: ${NACOS_GROUP:DEFAULT_GROUP}
 
+  elasticsearch:
+    uris: http://127.0.0.1:9200
+    connection-timeout: 5s
+    socket-timeout: 30s
+
 server:
   port: 8082
 

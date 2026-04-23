@@ -27,6 +27,8 @@ import com.xcvk.platform.workflow.model.vo.TicketDetailVO;
 import com.xcvk.platform.workflow.model.vo.TicketListItemVO;
 import com.xcvk.platform.workflow.model.vo.TicketManageListItemVO;
 import com.xcvk.platform.workflow.repository.mapper.TicketMapper;
+import com.xcvk.platform.workflow.search.assembler.TicketSearchAssembler;
+import com.xcvk.platform.workflow.search.repository.TicketIndexRepository;
 import com.xcvk.platform.workflow.service.TicketService;
 import com.xcvk.platform.workflow.service.TicketTypeService;
 import lombok.RequiredArgsConstructor;
@@ -67,6 +69,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     private final TicketTypeService ticketTypeService;
     private final SnowflakeIdGenerator idGenerator;
     private final TicketAssembler ticketAssembler;
+    private final TicketIndexRepository ticketIndexRepository;
+    private final TicketSearchAssembler ticketSearchAssembler;
 
     /**
      * 创建工单主流程。
@@ -74,6 +78,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      * @param cmd 创建工单命令对象
      * @return 创建结果
      */
+    // TODO es后续改为异步
     @Override
     public CreateTicketResponse createTicket(CreateTicketCmd cmd) {
         validateCreateCmd(cmd);
@@ -89,11 +94,24 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         int rows = baseMapper.insert(ticket);
         DbAssert.affectedOne(rows, TicketErrorMessages.CREATE_FAILED);
 
+        syncTicketToSearchIndex(ticket);
+
         return new CreateTicketResponse(
                 ticket.getId(),
                 ticket.getTicketNo(),
                 ticket.getStatus()
         );
+    }
+
+    /**
+     *  同步工单到搜索索引
+     * */
+    // TODO if null return 提取？
+    private void syncTicketToSearchIndex(Ticket ticket) {
+        if (ticket == null) {
+            return;
+        }
+        ticketIndexRepository.save(ticketSearchAssembler.toIndex(ticket));
     }
 
     /**
