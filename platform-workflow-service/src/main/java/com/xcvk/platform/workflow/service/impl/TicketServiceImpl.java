@@ -11,6 +11,7 @@ import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
 import com.xcvk.platform.common.util.DbAssert;
 import com.xcvk.platform.id.generator.SnowflakeIdGenerator;
+import com.xcvk.platform.workflow.assembler.TicketAssembler;
 import com.xcvk.platform.workflow.constant.TicketErrorMessages;
 import com.xcvk.platform.workflow.constant.TicketSourceConstants;
 import com.xcvk.platform.workflow.constant.TicketStatusConstants;
@@ -65,6 +66,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
 
     private final TicketTypeService ticketTypeService;
     private final SnowflakeIdGenerator idGenerator;
+    private final TicketAssembler ticketAssembler;
 
     /**
      * 创建工单主流程。
@@ -181,6 +183,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      * @param ticketNo 工单编号
      * @return 工单实体
      */
+    // TODO 后续看情况提取builder/factory
     private Ticket buildTicket(CreateTicketCmd cmd, TicketType ticketType, Long ticketId, String ticketNo) {
         return new Ticket()
                 .setId(ticketId)
@@ -219,7 +222,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         Page<Ticket> page = this.page(new Page<>(pageNum, pageSize), qw);
 
         List<TicketListItemVO> records = page.getRecords().stream()
-                .map(this::toTicketListItemVO)
+                .map(ticketAssembler::toTicketListItemVO)
                 .toList();
 
         return PageResult.of(records, page.getTotal(), pageNum, pageSize);
@@ -244,28 +247,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     }
 
     /**
-     * 将工单实体转换为员工侧列表项视图对象。
-     *
-     * @param ticket 工单实体
-     * @return 工单列表项
-     */
-    private TicketListItemVO toTicketListItemVO(Ticket ticket) {
-        return new TicketListItemVO(
-                ticket.getId(),
-                ticket.getTicketNo(),
-                ticket.getTicketTypeCode(),
-                ticket.getTicketTypeName(),
-                ticket.getTitle(),
-                ticket.getStatus(),
-                ticket.getPriority(),
-                ticket.getSource(),
-                ticket.getAssigneeName(),
-                ticket.getCreatedAt(),
-                ticket.getUpdatedAt()
-        );
-    }
-
-    /**
      * 查询当前登录用户自己的工单详情。
      *
      * @param creatorId 创建人ID
@@ -283,37 +264,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         );
 
         BizAssert.notNull(ticket, ErrorCode.BIZ_ERROR, TicketErrorMessages.TICKET_NOT_FOUND_OR_NO_PERMISSION);
-        return buildTicketDetailVO(ticket);
-    }
-
-    /**
-     * 将工单实体转换为详情视图对象。
-     *
-     * @param ticket 工单实体
-     * @return 工单详情
-     */
-    private TicketDetailVO buildTicketDetailVO(Ticket ticket) {
-        return new TicketDetailVO(
-                ticket.getId(),
-                ticket.getTicketNo(),
-                ticket.getTicketTypeId(),
-                ticket.getTicketTypeCode(),
-                ticket.getTicketTypeName(),
-                ticket.getTitle(),
-                ticket.getContent(),
-                ticket.getStatus(),
-                ticket.getPriority(),
-                ticket.getSource(),
-                ticket.getSourceRef(),
-                ticket.getCreatorId(),
-                ticket.getCreatorName(),
-                ticket.getAssigneeId(),
-                ticket.getAssigneeName(),
-                ticket.getStatusRemark(),
-                ticket.getClosedAt(),
-                ticket.getCreatedAt(),
-                ticket.getUpdatedAt()
-        );
+        return ticketAssembler.toTicketDetailVO(ticket);
     }
 
     /**
@@ -338,7 +289,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         Page<Ticket> page = this.page(new Page<>(pageNum, pageSize), qw);
 
         List<TicketManageListItemVO> records = page.getRecords().stream()
-                .map(this::toTicketManageListItemVO)
+                .map(ticketAssembler::toTicketManageListItemVO)
                 .toList();
 
         return PageResult.of(records, page.getTotal(), pageNum, pageSize);
@@ -450,31 +401,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
             return false;
         }
         return roleCodes.contains(targetRole);
-    }
-
-    /**
-     * 将工单实体转换为处理侧列表项视图对象。
-     *
-     * @param ticket 工单实体
-     * @return 处理侧工单列表项
-     */
-    private TicketManageListItemVO toTicketManageListItemVO(Ticket ticket) {
-        return new TicketManageListItemVO(
-                ticket.getId(),
-                ticket.getTicketNo(),
-                ticket.getTicketTypeCode(),
-                ticket.getTicketTypeName(),
-                ticket.getTitle(),
-                ticket.getStatus(),
-                ticket.getPriority(),
-                ticket.getSource(),
-                ticket.getCreatorId(),
-                ticket.getCreatorName(),
-                ticket.getAssigneeId(),
-                ticket.getAssigneeName(),
-                ticket.getCreatedAt(),
-                ticket.getUpdatedAt()
-        );
     }
 
     /**
