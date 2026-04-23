@@ -10,6 +10,7 @@ import com.xcvk.platform.workflow.assembler.TicketAssembler;
 import com.xcvk.platform.workflow.constant.TicketErrorMessages;
 import com.xcvk.platform.workflow.model.query.TicketManageQuery;
 import com.xcvk.platform.workflow.model.vo.TicketManageListItemVO;
+import com.xcvk.platform.workflow.search.constant.TicketSearchFields;
 import com.xcvk.platform.workflow.search.model.index.TicketIndex;
 import com.xcvk.platform.workflow.search.service.TicketSearchService;
 import lombok.RequiredArgsConstructor;
@@ -82,14 +83,17 @@ public class TicketSearchServiceImpl implements TicketSearchService {
         NativeQuery searchQuery = NativeQuery.builder()
                 .withQuery(boolQuery.build()._toQuery())
                 .withPageable(PageRequest.of(pageNum - 1, pageSize))
-                .withSort(Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("createdAt")))
+                .withSort(Sort.by(
+                        Sort.Order.desc(TicketSearchFields.UPDATED_AT),
+                        Sort.Order.desc(TicketSearchFields.CREATED_AT)
+                ))
                 .withHighlightQuery(new HighlightQuery(
                         new Highlight(
                                 HighlightParameters.builder()
-                                        .withPreTags("<em>")
-                                        .withPostTags("</em>")
+                                        .withPreTags(TicketSearchFields.HIGHLIGHT_PRE_TAG)
+                                        .withPostTags(TicketSearchFields.HIGHLIGHT_POST_TAG)
                                         .build(),
-                                List.of(new HighlightField("title"))
+                                List.of(new HighlightField(TicketSearchFields.HIGHLIGHT_TITLE))
                         ),
                         TicketIndex.class
                 ))
@@ -145,20 +149,20 @@ public class TicketSearchServiceImpl implements TicketSearchService {
         }
 
         if (query.mineOnlyOrFalse()) {
-            boolQuery.filter(term(t -> t.field("assigneeId").value(currentUserId)));
+            boolQuery.filter(term(t -> t.field(TicketSearchFields.ASSIGNEE_ID).value(currentUserId)));
             return;
         }
 
         if (query.unassignedOnlyOrFalse()) {
-            boolQuery.mustNot(term(t -> t.field("assigneeId").value(currentUserId)));
-            boolQuery.mustNot(term(t -> t.field("assigneeId").value(0L)));
+            boolQuery.mustNot(term(t -> t.field(TicketSearchFields.ASSIGNEE_ID).value(currentUserId)));
+            boolQuery.mustNot(term(t -> t.field(TicketSearchFields.ASSIGNEE_ID).value(0L)));
             return;
         }
 
         boolQuery.must(q -> q.bool(b -> b
-                .should(term(t -> t.field("assigneeId").value(currentUserId)))
-                .should(q2 -> q2.bool(b2 -> b2.mustNot(mn -> mn.exists(e -> e.field("assigneeId")))))
-                .minimumShouldMatch("1")
+                .should(term(t -> t.field(TicketSearchFields.ASSIGNEE_ID).value(currentUserId)))
+                .should(q2 -> q2.bool(b2 -> b2.mustNot(mn -> mn.exists(e -> e.field(TicketSearchFields.ASSIGNEE_ID)))))
+                .minimumShouldMatch(TicketSearchFields.MINIMUM_SHOULD_MATCH_ONE)
         ));
     }
 
@@ -174,31 +178,31 @@ public class TicketSearchServiceImpl implements TicketSearchService {
             String keyword = query.keyword().trim();
 
             boolQuery.must(q -> q.bool(b -> b
-                    .should(term(t -> t.field("ticketNo").value(keyword)))
-                    .should(match(m -> m.field("title").query(keyword)))
-                    .should(match(m -> m.field("content").query(keyword)))
-                    .minimumShouldMatch("1")
+                    .should(term(t -> t.field(TicketSearchFields.TICKET_NO).value(keyword)))
+                    .should(match(m -> m.field(TicketSearchFields.TITLE).query(keyword)))
+                    .should(match(m -> m.field(TicketSearchFields.CONTENT).query(keyword)))
+                    .minimumShouldMatch(TicketSearchFields.MINIMUM_SHOULD_MATCH_ONE)
             ));
         }
 
         if (StringUtils.hasText(query.status())) {
-            boolQuery.filter(term(t -> t.field("status").value(query.status().trim())));
+            boolQuery.filter(term(t -> t.field(TicketSearchFields.STATUS).value(query.status().trim())));
         }
 
         if (StringUtils.hasText(query.ticketTypeCode())) {
-            boolQuery.filter(term(t -> t.field("ticketTypeCode").value(query.ticketTypeCode().trim())));
+            boolQuery.filter(term(t -> t.field(TicketSearchFields.TICKET_TYPE_CODE).value(query.ticketTypeCode().trim())));
         }
 
         if (StringUtils.hasText(query.source())) {
-            boolQuery.filter(term(t -> t.field("source").value(query.source().trim())));
+            boolQuery.filter(term(t -> t.field(TicketSearchFields.SOURCE).value(query.source().trim())));
         }
 
         if (query.creatorId() != null) {
-            boolQuery.filter(term(t -> t.field("creatorId").value(query.creatorId())));
+            boolQuery.filter(term(t -> t.field(TicketSearchFields.CREATOR_ID).value(query.creatorId())));
         }
 
         if (query.assigneeId() != null) {
-            boolQuery.filter(term(t -> t.field("assigneeId").value(query.assigneeId())));
+            boolQuery.filter(term(t -> t.field(TicketSearchFields.ASSIGNEE_ID).value(query.assigneeId())));
         }
     }
 
@@ -217,11 +221,14 @@ public class TicketSearchServiceImpl implements TicketSearchService {
         }
 
         Map<String, List<String>> highlightFields = searchHit.getHighlightFields();
-        if (highlightFields == null || highlightFields.isEmpty()) {
+        if (highlightFields.isEmpty()) {
             return null;
         }
 
-        List<String> titleHighlights = highlightFields.getOrDefault("title", Collections.emptyList());
+        List<String> titleHighlights = highlightFields.getOrDefault(
+                TicketSearchFields.HIGHLIGHT_TITLE,
+                Collections.emptyList()
+        );
         if (titleHighlights.isEmpty()) {
             return null;
         }
