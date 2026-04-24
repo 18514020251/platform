@@ -1,5 +1,7 @@
 package com.xcvk.platform.workflow.assembler;
 
+import com.xcvk.platform.workflow.constant.TicketSourceConstants;
+import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
 import com.xcvk.platform.workflow.model.entity.Ticket;
 import com.xcvk.platform.workflow.model.vo.TicketDetailVO;
 import com.xcvk.platform.workflow.model.vo.TicketListItemVO;
@@ -173,6 +175,32 @@ public class TicketAssembler {
                 ticketIndex.getAssigneeName(),
                 ticketIndex.getCreatedAt(),
                 ticketIndex.getUpdatedAt()
+        );
+    }
+
+    /**
+     * 构建创建工单命令对象。
+     *
+     * @param creatorId 创建人ID
+     * @param creatorName 创建人姓名
+     * @param ticketTypeCode 工单类型编码
+     * @param title 工单标题
+     * @param content 工单内容
+     * @param priority 优先级
+     * @return 创建工单命令对象
+     */
+    public CreateTicketCmd toCreateTicketCmd(Long creatorId, String creatorName,
+                                             String ticketTypeCode, String title,
+                                             String content, String priority) {
+        return new CreateTicketCmd(
+                creatorId,
+                creatorName,
+                ticketTypeCode,
+                title,
+                content,
+                priority,
+                TicketSourceConstants.MANUAL,
+                null
         );
     }
 }

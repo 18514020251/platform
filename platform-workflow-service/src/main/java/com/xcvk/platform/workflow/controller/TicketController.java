@@ -66,6 +66,7 @@ public class TicketController {
      * @param request 创建工单请求
      * @return 创建结果
      */
+    // TODO cmd 组装放cmd
     @PostMapping
     @SaCheckLogin
     @AccessLog(value = "创建工单", recordArgs = true, recordResult = false)
@@ -73,18 +74,14 @@ public class TicketController {
     public Result<CreateTicketResponse> createTicket(@Valid @RequestBody CreateTicketRequest request) {
         CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
 
-        CreateTicketCmd cmd = new CreateTicketCmd(
+        return Result.success(ticketService.createTicket(
                 identity.userId(),
                 identity.realName(),
                 request.ticketTypeCode(),
                 request.title(),
                 request.content(),
-                request.priority(),
-                TicketSourceConstants.MANUAL,
-                null
-        );
-
-        return Result.success(ticketService.createTicket(cmd));
+                request.priority()
+        ));
     }
 
     /**

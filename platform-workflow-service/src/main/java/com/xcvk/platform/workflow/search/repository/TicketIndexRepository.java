@@ -17,5 +17,6 @@ import org.springframework.stereotype.Repository;
  * @since 2026-04-23
  */
 @Repository
-public interface TicketIndexRepository extends ElasticsearchRepository<TicketIndex, Long> {
+public interface TicketIndexRepository extends
+        ElasticsearchRepository<TicketIndex, Long> {
 }

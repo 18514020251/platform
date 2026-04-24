@@ -2,7 +2,6 @@ package com.xcvk.platform.workflow.service;
 
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.common.domain.PageResult;
-import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
 import com.xcvk.platform.workflow.model.dto.AssignTicketRequest;
 import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
 import com.xcvk.platform.workflow.model.query.MyTicketQuery;
@@ -33,10 +32,17 @@ public interface TicketService {
     /**
      * 创建工单
      *
-     * @param cmd 创建工单命令对象
+     * @param creatorId 工单创建者ID
+     * @param creatorName 工单创建者名称
+     * @param ticketTypeCode 工单类型编码
+     * @param title 工单标题
+     * @param content  工单内容
+     * @param priority 工单优先级
      * @return 创建结果
      */
-    CreateTicketResponse createTicket(CreateTicketCmd cmd);
+    CreateTicketResponse createTicket(Long creatorId, String creatorName,
+                                      String ticketTypeCode, String title,
+                                      String content, String priority);
 
     /**
      * 分页查询我的工单

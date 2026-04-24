@@ -46,7 +46,7 @@ import static co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders.*;
  *     <li>分页与排序</li>
  * </ul>
  *
- * <p>当前版本先不引入高亮、聚合、拼音搜索等增强能力，
+ * <p>当前版本先不引入聚合、拼音搜索等增强能力，
  * 优先保证检索链路清晰、易懂、可验证。</p>
  *
  * @author Programmer
@@ -206,8 +206,7 @@ public class TicketSearchServiceImpl implements TicketSearchService {
         }
 
         if (query.unassignedOnlyOrFalse()) {
-            boolQuery.mustNot(term(t -> t.field(TicketSearchFields.ASSIGNEE_ID).value(currentUserId)));
-            boolQuery.mustNot(term(t -> t.field(TicketSearchFields.ASSIGNEE_ID).value(0L)));
+            boolQuery.mustNot(q -> q.exists(e -> e.field(TicketSearchFields.ASSIGNEE_ID)));
             return;
         }
 

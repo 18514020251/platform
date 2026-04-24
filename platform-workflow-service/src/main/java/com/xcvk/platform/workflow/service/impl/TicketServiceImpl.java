@@ -77,14 +77,25 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     /**
      * 创建工单主流程。
      *
-     * @param cmd 创建工单命令对象
-     * @return 创建结果
+     * @param creatorId 创建人ID
+     * @param creatorName 创建人姓名
+     * @param ticketTypeCode 工单类型编码
+     * @param title 工单标题
+     * @param content 工单内容
+     * @param priority 优先级
+     * @return 工单创建结果
      */
+    // TODO 后续修改逻辑为es查询失败降级MySQL
     // TODO es后续改为异步
     @Override
-    public CreateTicketResponse createTicket(CreateTicketCmd cmd) {
-        validateCreateCmd(cmd);
+    public CreateTicketResponse createTicket(Long creatorId, String creatorName,
+                                             String ticketTypeCode, String title,
+                                             String content, String priority) {
+        CreateTicketCmd cmd = ticketAssembler.toCreateTicketCmd(
+                creatorId, creatorName, ticketTypeCode, title, content, priority
+        );
 
+        validateCreateCmd(cmd);
         TicketType ticketType = ticketTypeService.getEnabledTicketType(cmd.ticketTypeCode());
         validateTicketSource(cmd, ticketType);
 
@@ -116,7 +127,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      *
      * @param ticket 工单实体
      */
-    // TODO if null return 提取
     private void syncTicketToSearchIndex(Ticket ticket) {
         if (ticket == null) {
             return;
