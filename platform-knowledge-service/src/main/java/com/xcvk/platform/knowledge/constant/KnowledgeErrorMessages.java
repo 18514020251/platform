@@ -33,4 +33,7 @@ public final class KnowledgeErrorMessages {
     public static final String CREATOR_NAME_REQUIRED = "创建人名称不能为空";
 
     public static final String CREATE_DOCUMENT_FAILED = "创建知识文档失败";
+
+    public static final String QUERY_REQUIRED = "查询条件不能为空";
+
 }
