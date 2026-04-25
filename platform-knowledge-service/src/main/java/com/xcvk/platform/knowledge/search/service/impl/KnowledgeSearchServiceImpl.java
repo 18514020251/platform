@@ -4,6 +4,7 @@ import co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import com.xcvk.platform.common.domain.PageResult;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
+import com.xcvk.platform.knowledge.constant.KnowledgeDocumentStatusConstants;
 import com.xcvk.platform.knowledge.constant.KnowledgeErrorMessages;
 import com.xcvk.platform.knowledge.model.query.KnowledgeDocumentSearchQuery;
 import com.xcvk.platform.knowledge.model.vo.KnowledgeDocumentSearchItemVO;
@@ -131,12 +132,15 @@ public class KnowledgeSearchServiceImpl implements KnowledgeSearchService {
                     .should(match(m -> m.field(KnowledgeSearchFields.CATEGORY_NAME).query(keyword)))
                     .minimumShouldMatch(KnowledgeSearchFields.MINIMUM_SHOULD_MATCH_ONE)
             ));
-        }else {
+        } else {
             boolQuery.must(q -> q.matchAll(m -> m));
         }
 
         if (StringUtils.hasText(query.status())) {
             boolQuery.filter(term(t -> t.field(KnowledgeSearchFields.STATUS).value(query.status().trim())));
+        } else {
+            boolQuery.filter(term(t -> t.field(KnowledgeSearchFields.STATUS)
+                    .value(KnowledgeDocumentStatusConstants.PUBLISHED)));
         }
 
         if (query.categoryId() != null) {

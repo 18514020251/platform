@@ -6,6 +6,7 @@ import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
 import com.xcvk.platform.common.util.DbAssert;
 import com.xcvk.platform.knowledge.assembler.KnowledgeDocumentAssembler;
+import com.xcvk.platform.knowledge.constant.KnowledgeDocumentStatusConstants;
 import com.xcvk.platform.knowledge.constant.KnowledgeErrorMessages;
 import com.xcvk.platform.knowledge.model.cmd.CreateKnowledgeDocumentCmd;
 import com.xcvk.platform.knowledge.model.dto.CreateKnowledgeDocumentRequest;
@@ -19,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 /**
  * 知识文档服务实现类
@@ -105,6 +108,27 @@ public class KnowledgeDocumentServiceImpl
 
         int rows = baseMapper.updateById(updateEntity);
         DbAssert.affectedOne(rows, KnowledgeErrorMessages.UPDATE_DOCUMENT_FAILED);
+
+        KnowledgeDocument latestDocument = getById(documentId);
+        syncDocumentToSearchIndex(latestDocument);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void offlineDocument(CurrentLoginIdentity identity, Long documentId) {
+        validateCurrentLoginIdentity(identity);
+        BizAssert.notNull(documentId, ErrorCode.PARAM_INVALID, KnowledgeErrorMessages.DOCUMENT_ID_REQUIRED);
+
+        KnowledgeDocument document = getById(documentId);
+        BizAssert.notNull(document, ErrorCode.BIZ_ERROR, KnowledgeErrorMessages.DOCUMENT_NOT_FOUND);
+
+        KnowledgeDocument updateEntity = new KnowledgeDocument()
+                .setId(documentId)
+                .setStatus(KnowledgeDocumentStatusConstants.OFFLINE)
+                .setUpdatedAt(LocalDateTime.now());
+
+        int rows = baseMapper.updateById(updateEntity);
+        DbAssert.affectedOne(rows, KnowledgeErrorMessages.OFFLINE_DOCUMENT_FAILED);
 
         KnowledgeDocument latestDocument = getById(documentId);
         syncDocumentToSearchIndex(latestDocument);

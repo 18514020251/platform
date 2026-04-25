@@ -55,4 +55,15 @@ public class KnowledgeDocumentController {
         knowledgeDocumentService.updateDocument(identity, id, request);
         return Result.successVoid();
     }
+
+    @PutMapping("/{documentId}/offline")
+    @SaCheckLogin
+    @SaCheckRole(value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT}, mode = SaMode.OR)
+    @AccessLog(value = "下线知识文档", recordArgs = false, recordResult = false)
+    @Operation(summary = "下线知识文档", description = "将知识文档状态更新为已下线，并同步 Elasticsearch")
+    public Result<Void> offlineDocument(@PathVariable("documentId") Long documentId) {
+        CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
+        knowledgeDocumentService.offlineDocument(identity, documentId);
+        return Result.successVoid();
+    }
 }

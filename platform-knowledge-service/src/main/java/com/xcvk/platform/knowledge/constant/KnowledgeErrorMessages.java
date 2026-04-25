@@ -44,5 +44,6 @@ public final class KnowledgeErrorMessages {
 
     public static final String DOCUMENT_NOT_FOUND = "知识文档不存在";
 
+    public static final String OFFLINE_DOCUMENT_FAILED = "下线知识文档失败";
 
 }

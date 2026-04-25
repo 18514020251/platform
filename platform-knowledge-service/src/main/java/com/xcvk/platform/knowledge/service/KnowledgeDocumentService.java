@@ -35,4 +35,12 @@ public interface KnowledgeDocumentService extends IService<KnowledgeDocument> {
                         Long documentId,
                         UpdateKnowledgeDocumentRequest request);
 
+    /**
+     * 下线知识文档。
+     *
+     * @param identity 当前登录身份
+     * @param documentId 文档ID
+     */
+    void offlineDocument(CurrentLoginIdentity identity, Long documentId);
+
 }
