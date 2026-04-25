@@ -14,6 +14,10 @@ public final class KnowledgeErrorMessages {
     private KnowledgeErrorMessages() {
     }
 
+    public static final String DOCUMENT_ID_REQUIRED = "知识文档ID不能为空";
+
+    public static final String UPDATE_DOCUMENT_REQUEST_REQUIRED = "更新知识文档请求不能为空";
+
     public static final String CURRENT_LOGIN_IDENTITY_REQUIRED = "当前登录身份不能为空";
 
     public static final String CURRENT_USER_ID_REQUIRED = "当前登录用户ID不能为空";
@@ -35,5 +39,10 @@ public final class KnowledgeErrorMessages {
     public static final String CREATE_DOCUMENT_FAILED = "创建知识文档失败";
 
     public static final String QUERY_REQUIRED = "查询条件不能为空";
+
+    public static final String UPDATE_DOCUMENT_FAILED =  "更新知识文档失败";
+
+    public static final String DOCUMENT_NOT_FOUND = "知识文档不存在";
+
 
 }

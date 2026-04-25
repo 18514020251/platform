@@ -5,6 +5,7 @@ import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.auth.starter.util.SaTokenSessionUtils;
 import com.xcvk.platform.common.domain.Result;
 import com.xcvk.platform.knowledge.model.dto.CreateKnowledgeDocumentRequest;
+import com.xcvk.platform.knowledge.model.dto.UpdateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.service.KnowledgeDocumentService;
 import com.xcvk.platform.log.starter.annotation.AccessLog;
 import com.xcvk.platform.auth.starter.constant.PlatformRoleConstants;
@@ -39,8 +40,19 @@ public class KnowledgeDocumentController {
     @AccessLog(value = "创建知识文档", recordArgs = false, recordResult = false)
     @Operation(summary = "创建知识文档", description = "创建知识库文档并同步写入 Elasticsearch")
     public Result<Long> createDocument(@Valid @RequestBody CreateKnowledgeDocumentRequest request) {
-        log.info("接收到请求，title长度：{}", request.title().length()); // 加这行
         CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
         return Result.success(knowledgeDocumentService.createDocument(identity, request));
+    }
+
+    @PutMapping("/{id}")
+    @SaCheckLogin
+    @SaCheckRole(value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT}, mode = SaMode.OR)
+    @AccessLog(value = "更新知识文档", recordArgs = false, recordResult = false)
+    @Operation(summary = "更新知识文档", description = "更新知识库文档并同步写入 Elasticsearch")
+    public Result<Void> put(@PathVariable("id") Long id,
+                            @Valid @RequestBody UpdateKnowledgeDocumentRequest request) {
+        CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
+        knowledgeDocumentService.updateDocument(identity, id, request);
+        return Result.successVoid();
     }
 }

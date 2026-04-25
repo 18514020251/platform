@@ -5,6 +5,7 @@ import com.xcvk.platform.common.enums.DeleteStatus;
 import com.xcvk.platform.knowledge.constant.KnowledgeDocumentStatusConstants;
 import com.xcvk.platform.knowledge.model.cmd.CreateKnowledgeDocumentCmd;
 import com.xcvk.platform.knowledge.model.dto.CreateKnowledgeDocumentRequest;
+import com.xcvk.platform.knowledge.model.dto.UpdateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.model.entity.KnowledgeDocument;
 import org.springframework.stereotype.Component;
 
@@ -53,5 +54,17 @@ public class KnowledgeDocumentAssembler {
                 .setCreatedAt(now)
                 .setUpdatedAt(now)
                 .setDeleted(DeleteStatus.NORMAL);
+    }
+
+    public KnowledgeDocument toUpdateEntity(Long documentId, UpdateKnowledgeDocumentRequest request) {
+        return new KnowledgeDocument()
+                .setId(documentId)
+                .setTitle(request.title())
+                .setSummary(request.summary())
+                .setContent(request.content())
+                .setCategoryId(request.categoryId())
+                .setCategoryName(request.categoryName())
+                .setTags(request.tags())
+                .setUpdatedAt(LocalDateTime.now());
     }
 }

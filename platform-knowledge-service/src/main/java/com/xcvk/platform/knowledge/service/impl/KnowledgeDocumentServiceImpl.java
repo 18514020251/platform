@@ -9,6 +9,7 @@ import com.xcvk.platform.knowledge.assembler.KnowledgeDocumentAssembler;
 import com.xcvk.platform.knowledge.constant.KnowledgeErrorMessages;
 import com.xcvk.platform.knowledge.model.cmd.CreateKnowledgeDocumentCmd;
 import com.xcvk.platform.knowledge.model.dto.CreateKnowledgeDocumentRequest;
+import com.xcvk.platform.knowledge.model.dto.UpdateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.model.entity.KnowledgeDocument;
 import com.xcvk.platform.knowledge.repository.mapper.KnowledgeDocumentMapper;
 import com.xcvk.platform.knowledge.search.assembler.KnowledgeSearchAssembler;
@@ -76,6 +77,50 @@ public class KnowledgeDocumentServiceImpl
         syncDocumentToSearchIndex(document);
 
         return document.getId();
+    }
+
+    /**
+     * 更新知识文档。
+     *
+     * <p>当前阶段更新后默认发布，并同步写入 Elasticsearch，
+     * 用于先跑通知识库全文检索的最小闭环。</p>
+     *
+     * @param identity 当前登录身份
+     * @param documentId 知识文档ID
+     * @param request 更新知识文档请求
+     */
+    // TODO 后续修改逻辑为es查询失败降级MySQL
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateDocument(CurrentLoginIdentity identity,
+                               Long documentId,
+                               UpdateKnowledgeDocumentRequest request) {
+        validateCurrentLoginIdentity(identity);
+        validateUpdateRequest(documentId, request);
+
+        KnowledgeDocument existDocument = getById(documentId);
+        BizAssert.notNull(existDocument, ErrorCode.BIZ_ERROR, KnowledgeErrorMessages.DOCUMENT_NOT_FOUND);
+
+        KnowledgeDocument updateEntity = knowledgeDocumentAssembler.toUpdateEntity(documentId, request);
+
+        int rows = baseMapper.updateById(updateEntity);
+        DbAssert.affectedOne(rows, KnowledgeErrorMessages.UPDATE_DOCUMENT_FAILED);
+
+        KnowledgeDocument latestDocument = getById(documentId);
+        syncDocumentToSearchIndex(latestDocument);
+    }
+
+    /**
+     * 校验更新知识文档请求。
+     *
+     * @param documentId 知识文档ID
+     * @param request 更新知识文档请求
+     */
+    private void validateUpdateRequest(Long documentId, UpdateKnowledgeDocumentRequest request) {
+        BizAssert.notNull(documentId, ErrorCode.PARAM_INVALID, KnowledgeErrorMessages.DOCUMENT_ID_REQUIRED);
+        BizAssert.notNull(request, ErrorCode.PARAM_INVALID, KnowledgeErrorMessages.UPDATE_DOCUMENT_REQUEST_REQUIRED);
+        BizAssert.hasText(request.title(), ErrorCode.PARAM_INVALID, KnowledgeErrorMessages.TITLE_REQUIRED);
+        BizAssert.hasText(request.content(), ErrorCode.PARAM_INVALID, KnowledgeErrorMessages.CONTENT_REQUIRED);
     }
 
     /**
