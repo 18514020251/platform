@@ -46,4 +46,8 @@ public final class KnowledgeErrorMessages {
 
     public static final String OFFLINE_DOCUMENT_FAILED = "下线知识文档失败";
 
+    public static final String DOCUMENT_REQUIRED = "知识文档不能为空";
+
+    public static final String SAVE_DOCUMENT_CHUNK_FAILED = "保存知识文档切片失败";
+
 }

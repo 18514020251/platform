@@ -78,6 +78,10 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>com.xcvk.platform</groupId>
+            <artifactId>platform-id-starter</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

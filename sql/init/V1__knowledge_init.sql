@@ -6,6 +6,7 @@ CREATE DATABASE IF NOT EXISTS platform_knowledge;
 USE platform_knowledge;
 
 DROP TABLE IF EXISTS kb_document;
+DROP TABLE IF EXISTS kb_document_chunk;
 
 CREATE TABLE kb_document (
     id BIGINT PRIMARY KEY COMMENT '主键ID',
@@ -30,3 +31,26 @@ CREATE TABLE kb_document (
 
     deleted TINYINT NOT NULL DEFAULT 0 COMMENT '是否删除：0否，1是'
 ) COMMENT='知识文档表';
+
+
+CREATE TABLE kb_document_chunk (
+    id BIGINT PRIMARY KEY COMMENT '主键ID',
+
+    document_id BIGINT NOT NULL COMMENT '知识文档ID',
+    chunk_no INT NOT NULL COMMENT '切片序号，从1开始',
+
+    chunk_text TEXT NOT NULL COMMENT '切片文本内容',
+    chunk_hash VARCHAR(64) NOT NULL COMMENT '切片内容哈希',
+
+    token_count INT NOT NULL DEFAULT 0 COMMENT 'token数量，当前阶段可用字符数近似',
+
+    status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE' COMMENT '状态：ACTIVE/OFFLINE',
+
+    created_at DATETIME NOT NULL COMMENT '创建时间',
+    updated_at DATETIME NOT NULL COMMENT '更新时间',
+
+    UNIQUE KEY uk_document_chunk_no (document_id, chunk_no),
+    KEY idx_chunk_document_id (document_id),
+    KEY idx_chunk_status (status),
+    KEY idx_chunk_document_status (document_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='知识文档切片表';

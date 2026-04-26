@@ -15,6 +15,7 @@ import com.xcvk.platform.knowledge.model.entity.KnowledgeDocument;
 import com.xcvk.platform.knowledge.repository.mapper.KnowledgeDocumentMapper;
 import com.xcvk.platform.knowledge.search.assembler.KnowledgeSearchAssembler;
 import com.xcvk.platform.knowledge.search.repository.KnowledgeDocumentIndexRepository;
+import com.xcvk.platform.knowledge.service.KnowledgeDocumentChunkService;
 import com.xcvk.platform.knowledge.service.KnowledgeDocumentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +54,8 @@ public class KnowledgeDocumentServiceImpl
 
     private final KnowledgeDocumentIndexRepository knowledgeDocumentIndexRepository;
 
+    private final KnowledgeDocumentChunkService knowledgeDocumentChunkService;
+
     /**
      * 创建知识文档。
      *
@@ -76,6 +79,8 @@ public class KnowledgeDocumentServiceImpl
 
         int rows = baseMapper.insert(document);
         DbAssert.affectedOne(rows, KnowledgeErrorMessages.CREATE_DOCUMENT_FAILED);
+
+        knowledgeDocumentChunkService.rebuildDocumentChunks(document);
 
         syncDocumentToSearchIndex(document);
 
@@ -110,6 +115,8 @@ public class KnowledgeDocumentServiceImpl
         DbAssert.affectedOne(rows, KnowledgeErrorMessages.UPDATE_DOCUMENT_FAILED);
 
         KnowledgeDocument latestDocument = getById(documentId);
+        knowledgeDocumentChunkService.rebuildDocumentChunks(latestDocument);
+
         syncDocumentToSearchIndex(latestDocument);
     }
 
@@ -129,6 +136,8 @@ public class KnowledgeDocumentServiceImpl
 
         int rows = baseMapper.updateById(updateEntity);
         DbAssert.affectedOne(rows, KnowledgeErrorMessages.OFFLINE_DOCUMENT_FAILED);
+
+        knowledgeDocumentChunkService.offlineDocumentChunks(documentId);
 
         KnowledgeDocument latestDocument = getById(documentId);
         syncDocumentToSearchIndex(latestDocument);
