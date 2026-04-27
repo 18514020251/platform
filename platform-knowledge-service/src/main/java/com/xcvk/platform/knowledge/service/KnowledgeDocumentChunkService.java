@@ -27,7 +27,7 @@ public interface KnowledgeDocumentChunkService extends IService<KnowledgeDocumen
      *
      * <p>用于知识文档下线后，将其对应切片统一标记为下线。</p>
      *
-     * @param documentId 知识文档ID
+     * @param document 知识文档实体
      */
-    void offlineDocumentChunks(Long documentId);
+    void offlineDocumentChunks(KnowledgeDocument document);
 }

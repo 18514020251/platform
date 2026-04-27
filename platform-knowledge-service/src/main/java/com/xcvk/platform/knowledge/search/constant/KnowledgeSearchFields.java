@@ -15,10 +15,6 @@ public final class KnowledgeSearchFields {
     private KnowledgeSearchFields() {
     }
 
-    public static final String ID = "id";
-
-    public static final String DOCUMENT_ID = "documentId";
-
     public static final String TITLE = "title";
 
     public static final String SUMMARY = "summary";
@@ -29,19 +25,11 @@ public final class KnowledgeSearchFields {
 
     public static final String CATEGORY_NAME = "categoryName";
 
-    public static final String TAGS = "tags";
-
     public static final String STATUS = "status";
-
-    public static final String CREATOR_ID = "creatorId";
-
-    public static final String CREATOR_NAME = "creatorName";
 
     public static final String CREATED_AT = "createdAt";
 
     public static final String UPDATED_AT = "updatedAt";
-
-    public static final String PUBLISHED_AT = "publishedAt";
 
     public static final String HIGHLIGHT_TITLE = TITLE;
 

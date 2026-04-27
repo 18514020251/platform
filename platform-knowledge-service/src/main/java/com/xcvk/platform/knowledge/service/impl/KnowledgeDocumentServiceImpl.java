@@ -137,9 +137,11 @@ public class KnowledgeDocumentServiceImpl
         int rows = baseMapper.updateById(updateEntity);
         DbAssert.affectedOne(rows, KnowledgeErrorMessages.OFFLINE_DOCUMENT_FAILED);
 
-        knowledgeDocumentChunkService.offlineDocumentChunks(documentId);
-
         KnowledgeDocument latestDocument = getById(documentId);
+        BizAssert.notNull(latestDocument, ErrorCode.BIZ_ERROR, KnowledgeErrorMessages.DOCUMENT_NOT_FOUND);
+
+        knowledgeDocumentChunkService.offlineDocumentChunks(latestDocument);
+
         syncDocumentToSearchIndex(latestDocument);
     }
 
