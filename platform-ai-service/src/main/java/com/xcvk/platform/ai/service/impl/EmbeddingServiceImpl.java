@@ -1,9 +1,9 @@
 package com.xcvk.platform.ai.service.impl;
 
-import com.xcvk.platform.ai.model.dto.EmbeddingRequest;
-import com.xcvk.platform.ai.model.vo.EmbeddingResponse;
+import com.xcvk.platform.api.contract.ai.model.EmbeddingRequest;
 import com.xcvk.platform.ai.properties.DashScopeEmbeddingProperties;
 import com.xcvk.platform.ai.service.EmbeddingService;
+import com.xcvk.platform.api.contract.ai.model.EmbeddingResponse;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
 import dev.langchain4j.data.embedding.Embedding;

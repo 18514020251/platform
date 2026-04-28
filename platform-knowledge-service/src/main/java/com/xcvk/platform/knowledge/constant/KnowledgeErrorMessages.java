@@ -50,4 +50,22 @@ public final class KnowledgeErrorMessages {
 
     public static final String SAVE_DOCUMENT_CHUNK_FAILED = "保存知识文档切片失败";
 
+    public static final String DOCUMENT_CHUNK_NOT_FOUND = "知识文档切片不存在";
+
+    public static final String DOCUMENT_CHUNK_TEXT_REQUIRED = "知识文档切片文本不能为空";
+
+    public static final String EMBEDDING_RESPONSE_INVALID = "文本向量化响应无效";
+
+    public static final String EMBEDDING_MODEL_REQUIRED = "向量模型名称不能为空";
+
+    public static final String EMBEDDING_DIMENSION_REQUIRED = "向量维度不能为空";
+
+    public static final String EMBEDDING_DIMENSION_INVALID = "向量维度不合法";
+
+    public static final String EMBEDDING_VECTOR_REQUIRED = "向量结果不能为空";
+
+    public static final String EMBEDDING_VECTOR_COUNT_NOT_MATCH = "向量数量与切片数量不一致";
+
+    public static final String EMBEDDING_VECTOR_DIMENSION_NOT_MATCH = "向量维度与模型维度不一致";
+
 }

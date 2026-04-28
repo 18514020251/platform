@@ -1,9 +1,8 @@
 package com.xcvk.platform.ai.controller;
 
-import com.xcvk.platform.ai.model.dto.EmbeddingRequest;
-import com.xcvk.platform.ai.model.vo.EmbeddingResponse;
+import com.xcvk.platform.api.contract.ai.model.EmbeddingRequest;
 import com.xcvk.platform.ai.service.EmbeddingService;
-import com.xcvk.platform.common.domain.Result;
+import com.xcvk.platform.api.contract.ai.model.EmbeddingResponse;
 import com.xcvk.platform.log.starter.annotation.AccessLog;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -34,9 +33,9 @@ public class EmbeddingController {
      * @return 文本向量化响应
      */
     @PostMapping
-    @AccessLog(value = "批量生成文本向量", recordArgs = true, recordResult = true)
+    @AccessLog(value = "批量生成文本向量", recordArgs = false, recordResult = false)
     @Operation(summary = "批量生成文本向量", description = "批量生成文本向量")
-    public Result<EmbeddingResponse> embedTexts(@Valid @RequestBody EmbeddingRequest request) {
-        return Result.success(embeddingService.embedTexts(request));
+    public EmbeddingResponse embedTexts(@Valid @RequestBody EmbeddingRequest request) {
+        return embeddingService.embedTexts(request);
     }
 }

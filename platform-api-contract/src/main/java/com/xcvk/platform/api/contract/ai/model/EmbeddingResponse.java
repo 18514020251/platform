@@ -1,4 +1,4 @@
-package com.xcvk.platform.ai.model.vo;
+package com.xcvk.platform.api.contract.ai.model;
 
 import java.io.Serial;
 import java.io.Serializable;

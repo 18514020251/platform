@@ -1,7 +1,7 @@
 package com.xcvk.platform.ai.service;
 
-import com.xcvk.platform.ai.model.dto.EmbeddingRequest;
-import com.xcvk.platform.ai.model.vo.EmbeddingResponse;
+import com.xcvk.platform.api.contract.ai.model.EmbeddingRequest;
+import com.xcvk.platform.api.contract.ai.model.EmbeddingResponse;
 
 /**
  * 文本向量化服务

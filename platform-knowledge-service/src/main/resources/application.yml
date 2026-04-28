@@ -39,3 +39,7 @@ sa-token:
   is-concurrent: true
   is-share: true
   token-style: uuid
+
+platform:
+  remote:
+    ai-base-url: http://localhost:8084

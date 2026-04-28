@@ -1,4 +1,4 @@
-package com.xcvk.platform.ai.model.dto;
+package com.xcvk.platform.api.contract.ai.model;
 
 import jakarta.validation.constraints.NotEmpty;
 
