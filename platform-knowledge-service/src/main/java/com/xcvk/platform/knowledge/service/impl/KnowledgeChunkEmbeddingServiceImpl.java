@@ -4,11 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xcvk.platform.api.contract.ai.client.EmbedClient;
 import com.xcvk.platform.api.contract.ai.model.EmbeddingRequest;
 import com.xcvk.platform.api.contract.ai.model.EmbeddingResponse;
+import com.xcvk.platform.common.exception.BusinessException;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
 import com.xcvk.platform.knowledge.constant.KnowledgeChunkStatusConstants;
 import com.xcvk.platform.knowledge.constant.KnowledgeErrorMessages;
 import com.xcvk.platform.knowledge.model.entity.KnowledgeDocumentChunk;
+import com.xcvk.platform.knowledge.search.model.index.KnowledgeChunkIndex;
+import com.xcvk.platform.knowledge.search.repository.KnowledgeChunkIndexRepository;
 import com.xcvk.platform.knowledge.service.KnowledgeChunkEmbeddingService;
 import com.xcvk.platform.knowledge.service.KnowledgeDocumentChunkService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -40,6 +44,8 @@ public class KnowledgeChunkEmbeddingServiceImpl implements KnowledgeChunkEmbeddi
     private final KnowledgeDocumentChunkService knowledgeDocumentChunkService;
 
     private final EmbedClient embedClient;
+
+    private final KnowledgeChunkIndexRepository knowledgeChunkIndexRepository;
 
     /**
      * 为指定知识文档的 ACTIVE 切片生成 embedding。
@@ -73,8 +79,10 @@ public class KnowledgeChunkEmbeddingServiceImpl implements KnowledgeChunkEmbeddi
         EmbeddingResponse response = embedClient.embedTexts(new EmbeddingRequest(texts));
         validateEmbeddingResponse(response, texts.size());
 
+        writeEmbeddingsToChunkIndex(chunks, response);
+
         log.info(
-                "知识文档切片向量化调用成功，documentId={}, chunkCount={}, modelName={}, dimension={}",
+                "知识文档切片向量化完成，documentId={}, chunkCount={}, modelName={}, dimension={}",
                 documentId,
                 texts.size(),
                 response.modelName(),
@@ -82,6 +90,51 @@ public class KnowledgeChunkEmbeddingServiceImpl implements KnowledgeChunkEmbeddi
         );
 
         return response;
+    }
+
+    /**
+     * 将 embedding 写入 chunk 搜索索引。
+     *
+     * <p>当前阶段只更新 ES 中的 KnowledgeChunkIndex，
+     * MySQL 的 kb_document_chunk 仍然只保存 chunk 原文和元信息。</p>
+     *
+     * @param chunks 知识文档切片列表
+     * @param response AI 模块返回的向量化结果
+     */
+    private void writeEmbeddingsToChunkIndex(List<KnowledgeDocumentChunk> chunks, EmbeddingResponse response) {
+        List<KnowledgeChunkIndex> indexes = new ArrayList<>();
+
+        for (int i = 0; i < chunks.size(); i++) {
+            KnowledgeDocumentChunk chunk = chunks.get(i);
+            List<Float> vector = response.vectors().get(i);
+
+            KnowledgeChunkIndex index = knowledgeChunkIndexRepository.findById(chunk.getId())
+                    .orElseThrow(() -> new BusinessException(ErrorCode.BIZ_ERROR, KnowledgeErrorMessages.CHUNK_INDEX_NOT_FOUND));
+
+            index.setEmbedding(toFloatArray(vector))
+                    .setEmbeddingModel(response.modelName())
+                    .setEmbeddingDimension(response.dimension());
+
+            indexes.add(index);
+        }
+
+        knowledgeChunkIndexRepository.saveAll(indexes);
+    }
+
+    /**
+     * 将 Float 列表转换为 float 数组。
+     *
+     * @param vector Float 向量列表
+     * @return float 数组
+     */
+    private float[] toFloatArray(List<Float> vector) {
+        float[] result = new float[vector.size()];
+
+        for (int i = 0; i < vector.size(); i++) {
+            result[i] = vector.get(i);
+        }
+
+        return result;
     }
 
     /**

@@ -68,4 +68,6 @@ public final class KnowledgeErrorMessages {
 
     public static final String EMBEDDING_VECTOR_DIMENSION_NOT_MATCH = "向量维度与模型维度不一致";
 
+    public static final String CHUNK_INDEX_NOT_FOUND = "知识切片搜索索引不存在";
+
 }

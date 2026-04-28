@@ -61,6 +61,28 @@ public class KnowledgeChunkIndex implements Serializable {
     private String chunkText;
 
     /**
+     * chunk 向量
+     *
+     * <p>由 embedding 模型根据 chunkText 生成，用于后续 kNN 向量检索。</p>
+     */
+    @Field(type = FieldType.Dense_Vector, dims = 1024)
+    private float[] embedding;
+
+    /**
+     * embedding 模型名称
+     *
+     * <p>用于记录当前向量由哪个模型生成，方便后续模型升级和问题排查。</p>
+     */
+    @Field(type = FieldType.Keyword)
+    private String embeddingModel;
+
+    /**
+     * embedding 向量维度
+     */
+    @Field(type = FieldType.Integer)
+    private Integer embeddingDimension;
+
+    /**
      * 切片内容哈希
      *
      * <p>用于标识 chunk 内容指纹，便于后续判断是否需要重新向量化。</p>
@@ -121,4 +143,6 @@ public class KnowledgeChunkIndex implements Serializable {
      */
     @Field(type = FieldType.Date, format = DateFormat.date_hour_minute_second)
     private LocalDateTime updatedAt;
+
+
 }
