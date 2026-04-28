@@ -17,3 +17,19 @@ spring:
 
 server:
   port: 8084
+
+langchain4j:
+  open-ai:
+    chat-model:
+      api-key: ${DEEPSEEK_KEY}
+      model-name: deepseek-chat
+      base-url: https://api.deepseek.com
+      log-requests: true
+      log-responses: true
+
+platform:
+  ai:
+    embedding:
+      dashscope:
+        api-key: ${DASHSCOPE_API_KEY}
+        model-name: text-embedding-v3
