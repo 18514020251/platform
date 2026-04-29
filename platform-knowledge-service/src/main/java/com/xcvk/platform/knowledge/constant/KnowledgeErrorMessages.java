@@ -70,4 +70,7 @@ public final class KnowledgeErrorMessages {
 
     public static final String CHUNK_INDEX_NOT_FOUND = "知识切片搜索索引不存在";
 
+    public static final String VECTOR_SEARCH_REQUEST_REQUIRED = "向量检索请求不能为空";
+
+    public static final String VECTOR_SEARCH_QUESTION_REQUIRED = "向量检索问题不能为空";
 }

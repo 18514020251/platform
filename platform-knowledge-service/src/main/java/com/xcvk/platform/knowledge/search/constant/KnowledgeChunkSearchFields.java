@@ -101,4 +101,24 @@ public final class KnowledgeChunkSearchFields {
      * should 条件至少命中 1 个
      */
     public static final String MINIMUM_SHOULD_MATCH_ONE = "1";
+
+    /**
+     * chunk 向量字段
+     */
+    public static final String EMBEDDING = "embedding";
+
+    /**
+     * embedding 模型名称
+     */
+    public static final String EMBEDDING_MODEL = "embeddingModel";
+
+    /**
+     * embedding 维度
+     */
+    public static final String EMBEDDING_DIMENSION = "embeddingDimension";
+
+    /**
+     * embedding 更新时间
+     */
+    public static final String EMBEDDING_UPDATED_AT = "embeddingUpdatedAt";
 }
