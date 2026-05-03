@@ -92,6 +92,11 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.xcvk.platform</groupId>
+            <artifactId>platform-api-contract</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

@@ -73,4 +73,8 @@ public final class KnowledgeErrorMessages {
     public static final String VECTOR_SEARCH_REQUEST_REQUIRED = "向量检索请求不能为空";
 
     public static final String VECTOR_SEARCH_QUESTION_REQUIRED = "向量检索问题不能为空";
+
+    public static final String HYBRID_SEARCH_REQUEST_REQUIRED = "混合检索请求不能为空";
+
+    public static final String HYBRID_SEARCH_QUESTION_REQUIRED = "混合检索问题不能为空";
 }

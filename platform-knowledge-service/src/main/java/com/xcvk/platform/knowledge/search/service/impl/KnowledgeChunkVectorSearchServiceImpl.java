@@ -1,6 +1,5 @@
 package com.xcvk.platform.knowledge.search.service.impl;
 
-import co.elastic.clients.elasticsearch._types.KnnQuery;
 import co.elastic.clients.json.JsonData;
 import com.xcvk.platform.api.contract.ai.model.EmbeddingRequest;
 import com.xcvk.platform.api.contract.ai.model.EmbeddingResponse;
@@ -25,7 +24,6 @@ import org.springframework.util.CollectionUtils;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import com.xcvk.platform.api.contract.ai.client.EmbedClient;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static co.elastic.clients.elasticsearch._types.query_dsl.QueryBuilders.exists;
@@ -62,11 +60,22 @@ public class KnowledgeChunkVectorSearchServiceImpl implements KnowledgeChunkVect
     private static final int EXPECTED_EMBEDDING_DIMENSION = 1024;
 
     /**
-     * numCandidates 至少候选数量。
-     *
-     * <p>kNN 会先召回候选，再返回 topK。候选数略大于 topK，召回效果通常更稳定。</p>
+     * Painless 脚本参数名：查询向量
      */
-    private static final int MIN_NUM_CANDIDATES = 50;
+    private static final String SCRIPT_PARAM_QUERY_VECTOR = "query_vector";
+
+    private static final String PAINLESS_LANG = "painless";
+
+    /**
+     * 向量相似度脚本
+     *
+     * <p>cosineSimilarity 用于计算查询向量与 chunk embedding 字段的余弦相似度。
+     * 由于余弦相似度可能为负数，这里加 1.0 保证 ES score 为非负数。</p>
+     */
+    private static final String COSINE_SIMILARITY_SCRIPT =
+            "cosineSimilarity(params." + SCRIPT_PARAM_QUERY_VECTOR + ", '" +
+                    KnowledgeChunkSearchFields.EMBEDDING + "') + 1.0";
+
 
     private final EmbedClient embedClient;
 
@@ -129,9 +138,9 @@ public class KnowledgeChunkVectorSearchServiceImpl implements KnowledgeChunkVect
         Query scriptScoreQuery = Query.of(q -> q.scriptScore(scriptScore -> scriptScore
                 .query(buildVectorBaseQuery(request))
                 .script(script -> script.inline(inline -> inline
-                        .lang("painless")
-                        .source("cosineSimilarity(params.query_vector, 'embedding') + 1.0")
-                        .params("query_vector", JsonData.of(queryVector))
+                        .lang(PAINLESS_LANG)
+                        .source(COSINE_SIMILARITY_SCRIPT)
+                        .params(SCRIPT_PARAM_QUERY_VECTOR, JsonData.of(queryVector))
                 ))
         ));
 
