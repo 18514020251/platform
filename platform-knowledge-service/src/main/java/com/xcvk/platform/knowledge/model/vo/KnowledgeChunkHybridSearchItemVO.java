@@ -55,14 +55,26 @@ public record KnowledgeChunkHybridSearchItemVO(
         String tags,
 
         /**
-         * 全文检索得分
+         * 全文检索排名分
+         *
+         * <p>当前阶段使用 rank-based score，第1名为1.0，第2名为0.5。</p>
          */
-        Float textScore,
+        Float textRankScore,
 
         /**
-         * 向量检索得分
+         * 向量检索排名分
+         *
+         * <p>当前阶段使用 rank-based score，第1名为1.0，第2名为0.5。</p>
          */
-        Float vectorScore,
+        Float vectorRankScore,
+
+        /**
+         * 向量检索原始分
+         *
+         * <p>该字段来自 Elasticsearch script_score 计算结果，
+         * 用于观察向量相似度，不直接作为融合分数使用。</p>
+         */
+        Float vectorRawScore,
 
         /**
          * 融合后的最终得分

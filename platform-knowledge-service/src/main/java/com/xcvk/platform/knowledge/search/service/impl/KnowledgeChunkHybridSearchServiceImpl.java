@@ -187,7 +187,7 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
                     ignored -> HybridCandidate.fromText(item)
             );
 
-            candidate.textScore = textScore;
+            candidate.textRankScore = textScore;
             candidate.matchedByText = true;
         }
 
@@ -203,7 +203,7 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
                     ignored -> HybridCandidate.fromVector(item)
             );
 
-            candidate.vectorScore = vectorScore;
+            candidate.vectorRankScore = vectorScore;
             candidate.vectorRawScore = item.score();
             candidate.matchedByVector = true;
         }
@@ -271,9 +271,9 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
 
         private String tags;
 
-        private Float textScore;
+        private Float textRankScore;
 
-        private Float vectorScore;
+        private Float vectorRankScore;
 
         private Float vectorRawScore;
 
@@ -311,8 +311,8 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
         }
 
         void calculateFinalScore() {
-            float textPart = textScore == null ? 0.0F : textScore * TEXT_WEIGHT;
-            float vectorPart = vectorScore == null ? 0.0F : vectorScore * VECTOR_WEIGHT;
+            float textPart = textRankScore == null ? 0.0F : textRankScore * TEXT_WEIGHT;
+            float vectorPart = vectorRankScore == null ? 0.0F : vectorRankScore * VECTOR_WEIGHT;
             float bonus = matchedByText && matchedByVector ? BOTH_MATCH_BONUS : 0.0F;
             this.finalScore = textPart + vectorPart + bonus;
         }
@@ -327,8 +327,9 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
                     categoryId,
                     categoryName,
                     tags,
-                    textScore,
-                    vectorRawScore != null ? vectorRawScore : vectorScore,
+                    textRankScore,
+                    vectorRankScore,
+                    vectorRawScore,
                     finalScore,
                     resolveMatchType()
             );
