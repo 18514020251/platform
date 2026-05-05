@@ -291,7 +291,7 @@ public class TicketSearchServiceImpl implements TicketSearchService {
      * 判断当前角色列表中是否包含指定角色。
      *
      * @param roleCodes 角色编码列表
-     * @param targetRole 目标角色
+     * @param targetRole 目标角
      * @return true 表示包含
      */
     private boolean hasRole(List<String> roleCodes, String targetRole) {

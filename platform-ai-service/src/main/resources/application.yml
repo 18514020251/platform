@@ -33,3 +33,7 @@ platform:
       dashscope:
         api-key: ${DASHSCOPE_API_KEY}
         model-name: text-embedding-v3
+
+  remote:
+    knowledge-base-url: http://localhost:8083
+    ai-base-url: localhost:8085
