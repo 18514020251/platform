@@ -95,7 +95,7 @@ public class AuthServiceImpl implements AuthService {
             authCacheService.evictLoginUser(getCurrentLoginUserId());
         }
 
-        StpUtil.logout();
+        StpUtil.logout(getCurrentLoginUserId());
     }
 
     /**

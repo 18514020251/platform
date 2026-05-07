@@ -9,8 +9,6 @@ import com.xcvk.platform.auth.starter.util.SaTokenSessionUtils;
 import com.xcvk.platform.common.domain.PageResult;
 import com.xcvk.platform.common.domain.Result;
 import com.xcvk.platform.log.starter.annotation.AccessLog;
-import com.xcvk.platform.workflow.constant.TicketSourceConstants;
-import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
 import com.xcvk.platform.workflow.model.dto.AssignTicketRequest;
 import com.xcvk.platform.workflow.model.dto.CreateTicketRequest;
 import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
@@ -66,7 +64,6 @@ public class TicketController {
      * @param request 创建工单请求
      * @return 创建结果
      */
-    // TODO cmd 组装放cmd
     @PostMapping
     @SaCheckLogin
     @AccessLog(value = "创建工单", recordArgs = true, recordResult = false)
@@ -103,9 +100,10 @@ public class TicketController {
     }
 
     /**
-     * 我的工单详情
+     * 工单详情
      *
-     * <p>该接口只允许查看当前登录用户自己的工单详情，
+     * <p>管理员可以查看所有工单详情；
+     * 非管理员只允许查看当前登录用户自己的工单详情，
      * 防止用户通过猜测工单ID访问他人工单。</p>
      *
      * @param ticketId 工单ID
@@ -113,11 +111,11 @@ public class TicketController {
      */
     @GetMapping("/my/{ticketId}")
     @SaCheckLogin
-    @AccessLog(value = "查询我的工单详情", recordArgs = false, recordResult = false)
-    @Operation(summary = "我的工单详情", description = "查询当前登录用户自己的工单详情")
+    @AccessLog(value = "查询工单详情", recordArgs = false, recordResult = false)
+    @Operation(summary = "工单详情", description = "管理员可查看所有工单，非管理员只能查看自己的工单")
     public Result<TicketDetailVO> getMyTicketDetail(@PathVariable("ticketId") Long ticketId) {
-        Long currentUserId = saTokenSessionUtils.getCurrentLoginIdentity().userId();
-        return Result.success(ticketService.getMyTicketDetail(currentUserId, ticketId));
+        CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
+        return Result.success(ticketService.getMyTicketDetail(identity, ticketId));
     }
 
     /**

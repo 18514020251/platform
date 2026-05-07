@@ -54,13 +54,16 @@ public interface TicketService {
     PageResult<TicketListItemVO> pageMyTickets(Long creatorId, MyTicketQuery query);
 
     /**
-     * 查询我的工单详情
+     * 查询工单详情。
      *
-     * @param creatorId 当前登录用户ID
+     * <p>管理员可以查看所有工单；
+     * 非管理员只能查看自己创建的工单。</p>
+     *
+     * @param identity 当前登录身份
      * @param ticketId 工单ID
      * @return 工单详情
      */
-    TicketDetailVO getMyTicketDetail(Long creatorId, Long ticketId);
+    TicketDetailVO getMyTicketDetail(CurrentLoginIdentity identity, Long ticketId);
 
     /**
      * 分页查询处理侧工单列表

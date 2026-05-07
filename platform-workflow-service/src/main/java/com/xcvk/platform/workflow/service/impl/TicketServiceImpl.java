@@ -309,23 +309,40 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     }
 
     /**
-     * 查询当前登录用户自己的工单详情。
+     * 查询工单详情。
      *
-     * @param creatorId 创建人ID
+     * <p>管理员可以查看所有工单；
+     * 非管理员只能查看自己创建的工单。</p>
+     *
+     * @param identity 当前登录身份
      * @param ticketId 工单ID
      * @return 工单详情
      */
     @Override
-    public TicketDetailVO getMyTicketDetail(Long creatorId, Long ticketId) {
-        BizAssert.notNull(creatorId, ErrorCode.PARAM_INVALID, TicketErrorMessages.CREATOR_ID_REQUIRED);
+    public TicketDetailVO getMyTicketDetail(CurrentLoginIdentity identity, Long ticketId) {
+        validateCurrentLoginIdentity(identity);
         BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
 
-        Ticket ticket = this.getOne(new LambdaQueryWrapper<Ticket>()
-                .eq(Ticket::getId, ticketId)
-                .eq(Ticket::getCreatorId, creatorId)
+        Long currentUserId = identity.userId();
+        List<String> roleCodes = identity.roleCodes();
+
+        boolean isAdmin = hasRole(roleCodes, PlatformRoleConstants.ADMIN);
+
+        LambdaQueryWrapper<Ticket> qw = new LambdaQueryWrapper<Ticket>()
+                .eq(Ticket::getId, ticketId);
+
+        if (!isAdmin) {
+            qw.eq(Ticket::getCreatorId, currentUserId);
+        }
+
+        Ticket ticket = this.getOne(qw, false);
+
+        BizAssert.notNull(
+                ticket,
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.TICKET_NOT_FOUND_OR_NO_PERMISSION
         );
 
-        BizAssert.notNull(ticket, ErrorCode.BIZ_ERROR, TicketErrorMessages.TICKET_NOT_FOUND_OR_NO_PERMISSION);
         return ticketAssembler.toTicketDetailVO(ticket);
     }
 
@@ -388,9 +405,6 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         boolean isAdmin = hasRole(roleCodes, PlatformRoleConstants.ADMIN);
         boolean isSupport = hasRole(roleCodes, PlatformRoleConstants.SUPPORT);
 
-        // Controller 层已经通过角色注解做了接口准入控制，
-        // 这里继续保留一次角色判断，作为 Service 层兜底保护，
-        // 避免后续该方法被其他入口复用时出现权限缺口。
         BizAssert.isTrue(
                 isAdmin || isSupport,
                 ErrorCode.BIZ_ERROR,
