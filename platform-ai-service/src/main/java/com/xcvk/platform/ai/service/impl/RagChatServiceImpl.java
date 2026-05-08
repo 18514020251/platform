@@ -57,9 +57,25 @@ public class RagChatServiceImpl implements RagChatService {
     private static final String REJECT_REASON_LOW_RELEVANCE = "LOW_RELEVANCE";
 
     /**
-     * RRF 融合后，第一名单路召回得分约为 1 / 61 = 0.01639。
+     * 强证据阈值。
+     *
+     * <p>RRF 场景下，BOTH 命中第一名通常约为：
+     * 1 / 61 + 1 / 61 + 0.02 = 0.05279。
+     * 因此 0.04 可以认为是较可靠的双路召回证据。</p>
      */
-    private static final float MIN_ACCEPTED_CONTEXT_SCORE = 0.016F;
+    private static final float MIN_STRONG_CONTEXT_SCORE = 0.04F;
+
+    /**
+     * 文本证据阈值。
+     *
+     * <p>TEXT 单路命中第一名约为 1 / 61 = 0.01639。
+     * 文本命中至少说明关键词层面存在关联，因此允许作为弱证据通过。</p>
+     */
+    private static final float MIN_TEXT_CONTEXT_SCORE = 0.015F;
+
+    private static final String MATCH_TYPE_TEXT = "TEXT";
+
+    private static final String MATCH_TYPE_BOTH = "BOTH";
 
     private static final String PROMPT_SYSTEM_ROLE = """
         你是企业知识库助手，请严格基于【知识库内容】回答用户问题。
@@ -197,18 +213,46 @@ public class RagChatServiceImpl implements RagChatService {
 
     /**
      * 判断召回结果是否低相关。
+     *
+     * <p>注意：当前 finalScore 使用 RRF，更多表示“排名融合结果”，
+     * 不是绝对语义相关度。因此不能只看最高 finalScore。</p>
+     *
+     * <p>当前策略：</p>
+     * <ul>
+     *     <li>BOTH：同时被全文检索和向量检索命中，认为是强证据</li>
+     *     <li>TEXT：至少关键词命中，认为是可接受弱证据</li>
+     *     <li>VECTOR：仅向量命中时先保守拒答，避免无关问题被硬召回后误答</li>
+     * </ul>
      */
     private boolean isLowRelevance(List<KnowledgeRagContextItem> contexts) {
         if (CollectionUtils.isEmpty(contexts)) {
             return true;
         }
 
-        return contexts.stream()
-                .map(KnowledgeRagContextItem::finalScore)
-                .filter(score -> score != null)
-                .max(Float::compareTo)
-                .map(maxScore -> maxScore < MIN_ACCEPTED_CONTEXT_SCORE)
-                .orElse(true);
+        boolean hasStrongHybridEvidence = contexts.stream()
+                .anyMatch(context ->
+                        MATCH_TYPE_BOTH.equalsIgnoreCase(context.matchType())
+                                && safeScore(context.finalScore()) >= MIN_STRONG_CONTEXT_SCORE
+                );
+
+        if (hasStrongHybridEvidence) {
+            return false;
+        }
+
+        boolean hasTextEvidence = contexts.stream()
+                .anyMatch(context ->
+                        MATCH_TYPE_TEXT.equalsIgnoreCase(context.matchType())
+                                && safeScore(context.finalScore()) >= MIN_TEXT_CONTEXT_SCORE
+                );
+
+        return !hasTextEvidence;
+    }
+
+    /**
+     * 安全获取检索分数。
+     */
+    private float safeScore(Float score) {
+        return score == null ? 0.0F : score;
     }
 
     /**
