@@ -2,6 +2,7 @@ package com.xcvk.platform.ai.service.impl;
 
 import com.xcvk.platform.ai.model.dto.RagChatRequest;
 import com.xcvk.platform.ai.model.vo.RagChatResponse;
+import com.xcvk.platform.ai.model.vo.RagCitation;
 import com.xcvk.platform.ai.service.RagChatService;
 import com.xcvk.platform.api.contract.knowledge.client.KnowledgeRagContextClient;
 import com.xcvk.platform.api.contract.knowledge.model.KnowledgeRagContextItem;
@@ -41,32 +42,53 @@ public class RagChatServiceImpl implements RagChatService {
 
     private static final String SSE_EVENT_ERROR = "error";
 
+    private static final String SSE_EVENT_REJECTED = "rejected";
+
     private static final String SSE_DONE_FLAG = "[DONE]";
 
     private static final long SSE_TIMEOUT_MS = 180_000L;
 
     private static final String NO_CONTEXT_ANSWER = "知识库中暂未检索到相关内容，无法基于现有知识库回答该问题。";
 
-    private static final String PROMPT_SYSTEM_ROLE = "你是企业知识库助手，请严格基于【知识库内容】回答用户问题。\n" +
-            "如果知识库内容不足以回答，请明确说明无法从当前知识库中确定，不要编造。\n";
+    private static final String WEAK_CONTEXT_ANSWER = "当前知识库未提供足够可靠的依据，暂时无法回答该问题。";
+
+    private static final String REJECT_REASON_NO_CONTEXT = "NO_CONTEXT";
+
+    private static final String REJECT_REASON_LOW_RELEVANCE = "LOW_RELEVANCE";
+
+    /**
+     * RRF 融合后，第一名单路召回得分约为 1 / 61 = 0.01639。
+     */
+    private static final float MIN_ACCEPTED_CONTEXT_SCORE = 0.016F;
+
+    private static final String PROMPT_SYSTEM_ROLE = """
+        你是企业知识库助手，请严格基于【知识库内容】回答用户问题。
+        如果知识库内容不足以回答，请明确说明无法从当前知识库中确定，不要编造。
+        """;
 
     private static final String PROMPT_KNOWLEDGE_BASE_TITLE = "【知识库内容】\n";
 
-    private static final String PROMPT_SECTION_TEMPLATE = "片段{index}：\n" +
-            "文档标题：{documentTitle}\n" +
-            "分类：{categoryName}\n" +
-            "内容：\n{content}\n\n";
+    private static final String PROMPT_SECTION_TEMPLATE = """
+        片段{index}：
+        文档标题：{documentTitle}
+        分类：{categoryName}
+        内容：
+        {content}
+        
+        """;
 
     private static final String PROMPT_QUESTION_TITLE = "【用户问题】\n";
 
     private static final String PROMPT_REQUIREMENTS_TITLE = "【回答要求】\n";
 
-    private static final String PROMPT_REQUIREMENTS_CONTENT = "1. 只基于知识库内容回答，不要编造。\n" +
-            "2. 如果知识库片段中已经出现相关章节、条款或明确描述，不要声称知识库未明确说明。\n" +
-            "3. 回答要简洁、清晰，优先使用条目化列表。\n" +
-            "4. 回答末尾请标注依据的片段编号，例如：依据：片段2、片段3。\n" +
-            "5. 如果知识库内容确实不足，请只说明“当前知识库未提供足够信息”，不要扩展推测。\n" +
-            "6. 如果多个片段都与问题相关，请综合所有相关片段，不要只回答其中一个片段中的部分条目。\n";
+    private static final String PROMPT_REQUIREMENTS_CONTENT = """
+        1. 只基于知识库内容回答，不要编造。
+        2. 如果知识库片段中已经出现相关章节、条款或明确描述，不要声称知识库未明确说明。
+        3. 回答要简洁、清晰，优先使用条目化列表。
+        4. 回答末尾请标注依据的片段编号，例如：依据：片段2、片段3。
+        5. 如果知识库内容确实不足，请只说明“当前知识库未提供足够信息”，不要扩展推测。
+        6. 如果多个片段都与问题相关，请综合所有相关片段，不要只回答其中一个片段中的部分条目。
+        """;
 
 
     private final Object emitterLock = new Object();
@@ -75,22 +97,25 @@ public class RagChatServiceImpl implements RagChatService {
     private final ChatModel chatModel;
     private final StreamingChatModel streamingChatModel;
 
-    // ==================== 核心方法 ====================
-
     @Override
     public RagChatResponse chat(RagChatRequest request) {
         validateRequest(request);
 
         List<KnowledgeRagContextItem> contexts = retrieveContexts(request);
+        List<RagCitation> citations = buildCitations(contexts);
 
         if (CollectionUtils.isEmpty(contexts)) {
-            return new RagChatResponse(NO_CONTEXT_ANSWER, List.of());
+            return RagChatResponse.rejected(NO_CONTEXT_ANSWER, REJECT_REASON_NO_CONTEXT, citations);
+        }
+
+        if (isLowRelevance(contexts)) {
+            return RagChatResponse.rejected(WEAK_CONTEXT_ANSWER, REJECT_REASON_LOW_RELEVANCE, citations);
         }
 
         String prompt = buildPrompt(request.question(), contexts);
         String answer = chatModel.chat(prompt);
 
-        return new RagChatResponse(answer, contexts);
+        return RagChatResponse.answered(answer, citations);
     }
 
     @Override
@@ -100,12 +125,16 @@ public class RagChatServiceImpl implements RagChatService {
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
 
         List<KnowledgeRagContextItem> contexts = retrieveContexts(request);
-        sendEvent(emitter, SSE_EVENT_CONTEXTS, contexts);
+        List<RagCitation> citations = buildCitations(contexts);
+        sendEvent(emitter, SSE_EVENT_CONTEXTS, citations);
 
         if (CollectionUtils.isEmpty(contexts)) {
-            sendEvent(emitter, SSE_EVENT_DELTA, NO_CONTEXT_ANSWER);
-            sendEvent(emitter, SSE_EVENT_DONE, SSE_DONE_FLAG);
-            emitter.complete();
+            sendRejectEvents(emitter, NO_CONTEXT_ANSWER, REJECT_REASON_NO_CONTEXT);
+            return emitter;
+        }
+
+        if (isLowRelevance(contexts)) {
+            sendRejectEvents(emitter, WEAK_CONTEXT_ANSWER, REJECT_REASON_LOW_RELEVANCE);
             return emitter;
         }
 
@@ -139,7 +168,6 @@ public class RagChatServiceImpl implements RagChatService {
         return emitter;
     }
 
-
     /**
      * 召回相关知识片段
      */
@@ -152,6 +180,35 @@ public class RagChatServiceImpl implements RagChatService {
 
         List<KnowledgeRagContextItem> contexts = knowledgeRagContextClient.retrieveContexts(contextRequest);
         return contexts == null ? List.of() : contexts;
+    }
+
+    /**
+     * 构建回答引用来源。
+     */
+    private List<RagCitation> buildCitations(List<KnowledgeRagContextItem> contexts) {
+        if (CollectionUtils.isEmpty(contexts)) {
+            return List.of();
+        }
+
+        return contexts.stream()
+                .map(RagCitation::from)
+                .toList();
+    }
+
+    /**
+     * 判断召回结果是否低相关。
+     */
+    private boolean isLowRelevance(List<KnowledgeRagContextItem> contexts) {
+        if (CollectionUtils.isEmpty(contexts)) {
+            return true;
+        }
+
+        return contexts.stream()
+                .map(KnowledgeRagContextItem::finalScore)
+                .filter(score -> score != null)
+                .max(Float::compareTo)
+                .map(maxScore -> maxScore < MIN_ACCEPTED_CONTEXT_SCORE)
+                .orElse(true);
     }
 
     /**
@@ -194,6 +251,16 @@ public class RagChatServiceImpl implements RagChatService {
      */
     private String safeText(String value) {
         return StringUtils.hasText(value) ? value.trim() : "";
+    }
+
+    /**
+     * 发送 SSE 拒答事件。
+     */
+    private void sendRejectEvents(SseEmitter emitter, String answer, String rejectReason) {
+        sendEvent(emitter, SSE_EVENT_REJECTED, rejectReason);
+        sendEvent(emitter, SSE_EVENT_DELTA, answer);
+        sendEvent(emitter, SSE_EVENT_DONE, SSE_DONE_FLAG);
+        emitter.complete();
     }
 
     /**

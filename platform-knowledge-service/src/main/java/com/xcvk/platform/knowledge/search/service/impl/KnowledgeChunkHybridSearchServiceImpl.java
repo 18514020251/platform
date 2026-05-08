@@ -27,15 +27,14 @@ import java.util.Map;
 /**
  * 知识文档切片混合检索服务实现类
  *
- * <p>当前阶段采用简单、可解释的融合策略：</p>
+ * <p>当前阶段采用 RRF（Reciprocal Rank Fusion）融合策略：</p>
  * <ul>
  *     <li>先执行 chunk 全文检索，获取关键词相关片段</li>
  *     <li>再执行 chunk 向量检索，获取语义相关片段</li>
  *     <li>按 chunkId 合并结果</li>
- *     <li>同时被全文和向量命中的片段给予额外加分</li>
+ *     <li>根据全文排名和向量排名计算 RRF 分数</li>
+ *     <li>同时被全文和向量命中的片段给予轻量加分</li>
  * </ul>
- *
- * <p>后续如果需要更稳定的排序效果，可以升级为 RRF 等融合算法。</p>
  *
  * @author Programmer
  * @version 1.0
@@ -47,19 +46,18 @@ import java.util.Map;
 public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybridSearchService {
 
     /**
-     * 全文检索权重
+     * RRF 排名平滑常数。
+     *
+     * <p>k 越大，靠前排名之间的分差越小；60 是搜索融合中常用的稳定默认值。</p>
      */
-    private static final float TEXT_WEIGHT = 0.4F;
+    private static final int RRF_K = 60;
 
     /**
-     * 向量检索权重
+     * 双路命中轻量奖励分。
+     *
+     * <p>用于鼓励同时被关键词和向量召回的片段，避免奖励过大导致压过真实排名。</p>
      */
-    private static final float VECTOR_WEIGHT = 0.6F;
-
-    /**
-     * 双路命中奖励分
-     */
-    private static final float BOTH_MATCH_BONUS = 0.5F;
+    private static final float BOTH_MATCH_BONUS = 0.02F;
 
     /**
      * 混合检索内部召回倍数
@@ -83,12 +81,6 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
 
     private final KnowledgeChunkVectorSearchService knowledgeChunkVectorSearchService;
 
-    /**
-     * 混合检索知识文档切片。
-     *
-     * @param request 混合检索请求
-     * @return 融合后的知识片段列表
-     */
     @Override
     public List<KnowledgeChunkHybridSearchItemVO> hybridSearch(KnowledgeChunkHybridSearchRequest request) {
         validateRequest(request);
@@ -118,13 +110,6 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
         return records;
     }
 
-    /**
-     * 执行 chunk 全文检索。
-     *
-     * @param request 混合检索请求
-     * @param recallSize 内部召回数量
-     * @return 全文检索结果
-     */
     private List<KnowledgeChunkSearchItemVO> searchByText(KnowledgeChunkHybridSearchRequest request, int recallSize) {
         KnowledgeChunkSearchQuery query = new KnowledgeChunkSearchQuery(
                 request.question(),
@@ -143,13 +128,6 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
         return pageResult.getRecords();
     }
 
-    /**
-     * 执行 chunk 向量检索。
-     *
-     * @param request 混合检索请求
-     * @param recallSize 内部召回数量
-     * @return 向量检索结果
-     */
     private List<KnowledgeChunkVectorSearchItemVO> searchByVector(KnowledgeChunkHybridSearchRequest request,
                                                                   int recallSize) {
         KnowledgeChunkVectorSearchRequest vectorSearchRequest = new KnowledgeChunkVectorSearchRequest(
@@ -161,16 +139,6 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
         return knowledgeChunkVectorSearchService.vectorSearch(vectorSearchRequest);
     }
 
-    /**
-     * 合并全文检索和向量检索结果。
-     *
-     * <p>当前阶段使用 rank-based score：
-     * 排名越靠前，基础分越高；双路都命中时额外加分。</p>
-     *
-     * @param textResults 全文检索结果
-     * @param vectorResults 向量检索结果
-     * @return chunkId 到候选结果的映射
-     */
     private Map<Long, HybridCandidate> mergeResults(List<KnowledgeChunkSearchItemVO> textResults,
                                                     List<KnowledgeChunkVectorSearchItemVO> vectorResults) {
         Map<Long, HybridCandidate> candidateMap = new LinkedHashMap<>();
@@ -181,7 +149,7 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
                 continue;
             }
 
-            float textScore = rankScore(i);
+            float textScore = rrfScore(i);
             HybridCandidate candidate = candidateMap.computeIfAbsent(
                     item.chunkId(),
                     ignored -> HybridCandidate.fromText(item)
@@ -197,7 +165,7 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
                 continue;
             }
 
-            float vectorScore = rankScore(i);
+            float vectorScore = rrfScore(i);
             HybridCandidate candidate = candidateMap.computeIfAbsent(
                     item.chunkId(),
                     ignored -> HybridCandidate.fromVector(item)
@@ -212,33 +180,14 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
         return candidateMap;
     }
 
-    /**
-     * 根据排名计算基础得分。
-     *
-     * <p>排名从 0 开始，第一名得 1 分，第二名得 0.5 分，第三名得 0.333 分。</p>
-     *
-     * @param index 排名下标
-     * @return 排名得分
-     */
-    private float rankScore(int index) {
-        return 1.0F / (index + 1);
+    private float rrfScore(int index) {
+        return 1.0F / (RRF_K + index + 1);
     }
 
-    /**
-     * 计算内部召回数量。
-     *
-     * @param topK 最终返回数量
-     * @return 内部召回数量
-     */
     private int resolveRecallSize(int topK) {
         return Math.min(topK * RECALL_MULTIPLIER, MAX_RECALL_SIZE);
     }
 
-    /**
-     * 校验混合检索请求。
-     *
-     * @param request 混合检索请求
-     */
     private void validateRequest(KnowledgeChunkHybridSearchRequest request) {
         BizAssert.notNull(request, ErrorCode.PARAM_INVALID, KnowledgeErrorMessages.HYBRID_SEARCH_REQUEST_REQUIRED);
         BizAssert.isTrue(
@@ -248,11 +197,6 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
         );
     }
 
-    /**
-     * 混合检索候选项。
-     *
-     * <p>用于在 Service 内部合并全文检索和向量检索结果，不对外暴露。</p>
-     */
     private static class HybridCandidate {
 
         private Long chunkId;
@@ -311,8 +255,8 @@ public class KnowledgeChunkHybridSearchServiceImpl implements KnowledgeChunkHybr
         }
 
         void calculateFinalScore() {
-            float textPart = textRankScore == null ? 0.0F : textRankScore * TEXT_WEIGHT;
-            float vectorPart = vectorRankScore == null ? 0.0F : vectorRankScore * VECTOR_WEIGHT;
+            float textPart = textRankScore == null ? 0.0F : textRankScore;
+            float vectorPart = vectorRankScore == null ? 0.0F : vectorRankScore;
             float bonus = matchedByText && matchedByVector ? BOTH_MATCH_BONUS : 0.0F;
             this.finalScore = textPart + vectorPart + bonus;
         }

@@ -55,16 +55,16 @@ public record KnowledgeChunkHybridSearchItemVO(
         String tags,
 
         /**
-         * 全文检索排名分
+         * 全文检索 RRF 排名分
          *
-         * <p>当前阶段使用 rank-based score，第1名为1.0，第2名为0.5。</p>
+         * <p>由全文检索排名计算得到，用于混合检索融合排序。</p>
          */
         Float textRankScore,
 
         /**
-         * 向量检索排名分
+         * 向量检索 RRF 排名分
          *
-         * <p>当前阶段使用 rank-based score，第1名为1.0，第2名为0.5。</p>
+         * <p>由向量检索排名计算得到，用于混合检索融合排序。</p>
          */
         Float vectorRankScore,
 
