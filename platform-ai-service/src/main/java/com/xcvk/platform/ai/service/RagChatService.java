@@ -2,6 +2,9 @@ package com.xcvk.platform.ai.service;
 
 import com.xcvk.platform.ai.model.dto.RagChatRequest;
 import com.xcvk.platform.ai.model.vo.RagChatResponse;
+import dev.langchain4j.service.spring.AiService;
+import jakarta.validation.Valid;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * RAG 问答服务
@@ -21,4 +24,6 @@ public interface RagChatService {
      * @return RAG 问答响应
      */
     RagChatResponse chat(RagChatRequest request);
+
+    SseEmitter chatStream(@Valid RagChatRequest request);
 }

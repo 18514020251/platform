@@ -7,7 +7,9 @@ import com.xcvk.platform.log.starter.annotation.AccessLog;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 /**
  * RAG 问答控制器
@@ -36,5 +38,12 @@ public class RagChatController {
     @Operation(summary = "RAG知识库问答", description = "基于知识库召回内容生成回答")
     public RagChatResponse chat(@Valid @RequestBody RagChatRequest request) {
         return ragChatService.chat(request);
+    }
+
+    @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @AccessLog(value = "RAG知识库流式问答", recordArgs = false, recordResult = false)
+    @Operation(summary = "RAG知识库流式问答", description = "基于知识库召回内容流式生成回答")
+    public SseEmitter chatStream(@Valid @RequestBody RagChatRequest request) {
+        return ragChatService.chatStream(request);
     }
 }

@@ -45,7 +45,7 @@ import org.springframework.web.bind.annotation.*;
  * @date 2026-04-20
  */
 @RestController
-@RequestMapping("/tickets")
+@RequestMapping({"/tickets", "/"})
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "工单管理", description = "工单创建、查询与处理")
