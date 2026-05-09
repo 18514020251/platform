@@ -83,4 +83,15 @@ public record AssistantChatResponse(
                 null
         );
     }
+
+    public static AssistantChatResponse unsupported(String answer) {
+        return new AssistantChatResponse(
+                "UNSUPPORTED_REQUEST",
+                answer,
+                false,
+                null,
+                null,
+                null
+        );
+    }
 }

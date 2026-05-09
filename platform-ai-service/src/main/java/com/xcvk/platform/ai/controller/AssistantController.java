@@ -6,6 +6,7 @@ import com.xcvk.platform.ai.model.vo.AssistantChatResponse;
 import com.xcvk.platform.ai.service.AssistantService;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.auth.starter.util.SaTokenSessionUtils;
+import com.xcvk.platform.common.domain.Result;
 import com.xcvk.platform.log.starter.annotation.AccessLog;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
  * <p>统一承接企业知识问答、流程咨询和工单创建等自然语言请求。</p>
  *
  * @author Programmer
- * @version 1.1
+ * @version 1.2
  * @date 2026-05-08
  */
 @RestController
@@ -43,8 +44,9 @@ public class AssistantController {
     @SaCheckLogin
     @AccessLog(value = "智能助手对话", recordArgs = false, recordResult = false)
     @Operation(summary = "智能助手对话", description = "支持知识问答与AI工单创建")
-    public AssistantChatResponse chat(@Valid @RequestBody AssistantChatRequest request) {
+    public Result<AssistantChatResponse> chat(@Valid @RequestBody AssistantChatRequest request) {
         CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
-        return assistantService.chat(identity, request);
+        AssistantChatResponse response = assistantService.chat(identity, request);
+        return Result.success(response);
     }
 }
