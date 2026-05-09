@@ -804,4 +804,56 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 TicketErrorMessages.TICKET_STATUS_NOT_ALLOW_ASSIGN
         );
     }
+
+    /**
+     * AI Agent 创建工单。
+     *
+     * <p>AI 创建工单与手工创建工单共享同一套主流程，
+     * 区别在于来源固定为 AI_AGENT，并写入 sourceRef 用于追踪 Agent 执行链路。</p>
+     *
+     * @param creatorId 创建人ID
+     * @param creatorName 创建人姓名
+     * @param ticketTypeCode 工单类型编码
+     * @param title 工单标题
+     * @param content 工单内容
+     * @param priority 优先级
+     * @param sourceRef AI会话ID / Agent执行ID
+     * @return 工单创建结果
+     */
+    @Override
+    public CreateTicketResponse createAiTicket(Long creatorId, String creatorName,
+                                               String ticketTypeCode, String title,
+                                               String content, String priority,
+                                               String sourceRef) {
+        CreateTicketCmd cmd = new CreateTicketCmd(
+                creatorId,
+                creatorName,
+                ticketTypeCode,
+                title,
+                content,
+                priority,
+                TicketSourceConstants.AI_AGENT,
+                sourceRef
+        );
+
+        validateCreateCmd(cmd);
+        TicketType ticketType = ticketTypeService.getEnabledTicketType(cmd.ticketTypeCode());
+        validateTicketSource(cmd, ticketType);
+
+        Long ticketId = idGenerator.nextId();
+        String ticketNo = buildTicketNo(ticketId);
+
+        Ticket ticket = buildTicket(cmd, ticketType, ticketId, ticketNo);
+
+        int rows = baseMapper.insert(ticket);
+        DbAssert.affectedOne(rows, TicketErrorMessages.CREATE_FAILED);
+
+        syncTicketToSearchIndex(ticket);
+
+        return new CreateTicketResponse(
+                ticket.getId(),
+                ticket.getTicketNo(),
+                ticket.getStatus()
+        );
+    }
 }

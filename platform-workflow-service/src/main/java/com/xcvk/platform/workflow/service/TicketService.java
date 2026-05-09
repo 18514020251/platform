@@ -115,4 +115,24 @@ public interface TicketService {
      * @param request  管理员指定的接单人对象
      * */
     void assignTicket(CurrentLoginIdentity identity, Long ticketId, AssignTicketRequest request);
+
+    /**
+     * AI Agent 创建工单。
+     *
+     * <p>该方法与手工创建工单共享同一套校验、编号生成、入库和搜索索引同步逻辑，
+     * 但工单来源固定为 AI_AGENT。</p>
+     *
+     * @param creatorId 创建人ID
+     * @param creatorName 创建人名称
+     * @param ticketTypeCode 工单类型编码
+     * @param title 工单标题
+     * @param content 工单内容
+     * @param priority 优先级
+     * @param sourceRef AI会话ID / Agent执行ID
+     * @return 创建结果
+     */
+    CreateTicketResponse createAiTicket(Long creatorId, String creatorName,
+                                        String ticketTypeCode, String title,
+                                        String content, String priority,
+                                        String sourceRef);
 }
