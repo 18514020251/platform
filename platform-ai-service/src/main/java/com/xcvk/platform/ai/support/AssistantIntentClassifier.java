@@ -42,7 +42,9 @@ public class AssistantIntentClassifier {
     public AssistantIntentDecision classify(String question) {
         try {
             String prompt = AssistantPromptTemplates.INTENT_PROMPT_TEMPLATE.replace("{question}", question);
+
             String modelOutput = chatModel.chat(prompt);
+
             String json = extractJson(modelOutput);
 
             AssistantIntentDecision decision = objectMapper.readValue(json, AssistantIntentDecision.class);
@@ -141,7 +143,6 @@ public class AssistantIntentClassifier {
                 .replace("```json", "")
                 .replace("```", "")
                 .trim();
-
         int start = cleaned.indexOf('{');
         int end = cleaned.lastIndexOf('}');
 

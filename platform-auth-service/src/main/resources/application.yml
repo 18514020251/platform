@@ -22,6 +22,9 @@ spring:
         group: ${NACOS_GROUP:DEFAULT_GROUP}
 
   data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://127.0.0.1:27017/platform_log}
+
     redis:
       host: 127.0.0.1
       port: 6379
@@ -32,6 +35,18 @@ server:
   port: 8081
 
 platform:
+  access-log:
+    enabled: true
+    mongo-enabled: ${ACCESS_LOG_MONGO_ENABLED:true}
+    collection-name: ${ACCESS_LOG_COLLECTION:platform_access_log}
+    create-indexes: ${ACCESS_LOG_CREATE_INDEXES:true}
+    ttl-days: ${ACCESS_LOG_TTL_DAYS:30}
+    async-core-pool-size: ${ACCESS_LOG_ASYNC_CORE_POOL_SIZE:2}
+    async-max-pool-size: ${ACCESS_LOG_ASYNC_MAX_POOL_SIZE:4}
+    async-queue-capacity: ${ACCESS_LOG_ASYNC_QUEUE_CAPACITY:1000}
+    async-thread-name-prefix: ${ACCESS_LOG_ASYNC_THREAD_NAME_PREFIX:access-log-}
+    async-await-termination-seconds: ${ACCESS_LOG_ASYNC_AWAIT_TERMINATION_SECONDS:3}
+
   redis:
     health-check:
       enabled: true

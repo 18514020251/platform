@@ -222,6 +222,27 @@ public class KnowledgeChunkSearchServiceImpl implements KnowledgeChunkSearchServ
     private KnowledgeChunkSearchItemVO toSearchItemVO(SearchHit<KnowledgeChunkIndex> searchHit) {
         KnowledgeChunkIndex index = searchHit.getContent();
 
+        String chunkText = index.getChunkText();
+
+        return new KnowledgeChunkSearchItemVO(
+                index.getId(),
+                index.getDocumentId(),
+                index.getChunkNo(),
+                chunkText,
+                index.getDocumentTitle(),
+                index.getCategoryId(),
+                index.getCategoryName(),
+                index.getTags(),
+                index.getStatus(),
+                index.getTokenCount(),
+                index.getUpdatedAt()
+        );
+    }
+
+    @Deprecated
+    private KnowledgeChunkSearchItemVO toSearchItemVOWithHighlight(SearchHit<KnowledgeChunkIndex> searchHit) {
+        KnowledgeChunkIndex index = searchHit.getContent();
+
         String highlightChunkText = extractHighlightChunkText(searchHit);
         String chunkText = StringUtils.hasText(highlightChunkText)
                 ? highlightChunkText
