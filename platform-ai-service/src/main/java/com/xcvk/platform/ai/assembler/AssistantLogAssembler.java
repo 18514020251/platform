@@ -14,6 +14,10 @@ import com.xcvk.platform.ai.support.AssistantIdentityResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import static com.xcvk.platform.ai.constant.AssistantConstants.*;
 import static com.xcvk.platform.ai.support.AssistantTextUtils.safeText;
 import static com.xcvk.platform.ai.support.AssistantTextUtils.truncate;
@@ -123,7 +127,35 @@ public class AssistantLogAssembler {
     }
 
     public void markQueryTicketSuccess(AiAgentExecutionLog executionLog, QueryAiTicketResponse response) {
-        executionLog.setToolResponse(toLogJson(response));
+        executionLog.setToolResponse(toLogJson(buildQueryTicketLogSummary(response)));
         executionLog.setExecutionStatus(EXECUTION_STATUS_SUCCESS);
+    }
+
+    private Object buildQueryTicketLogSummary(QueryAiTicketResponse response) {
+        if (response == null) {
+            return null;
+        }
+
+        List<Map<String, Object>> ticketSummaries = response.tickets() == null
+                ? List.of()
+                : response.tickets().stream()
+                .map(ticket -> {
+                    Map<String, Object> item = new LinkedHashMap<>();
+                    item.put("ticketNo", ticket.ticketNo());
+                    item.put("status", ticket.status());
+                    item.put("priority", ticket.priority());
+                    item.put("ticketTypeCode", ticket.ticketTypeCode());
+                    item.put("closed", ticket.closedAt() != null);
+                    return item;
+                })
+                .toList();
+
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("queryType", response.queryType());
+        summary.put("total", response.total());
+        summary.put("returnedCount", ticketSummaries.size());
+        summary.put("tickets", ticketSummaries);
+
+        return summary;
     }
 }

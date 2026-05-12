@@ -55,3 +55,5 @@ platform:
     async-queue-capacity: ${ACCESS_LOG_ASYNC_QUEUE_CAPACITY:1000}
     async-thread-name-prefix: ${ACCESS_LOG_ASYNC_THREAD_NAME_PREFIX:access-log-}
     async-await-termination-seconds: ${ACCESS_LOG_ASYNC_AWAIT_TERMINATION_SECONDS:3}
+  internal:
+    token: platform-internal-dev-token

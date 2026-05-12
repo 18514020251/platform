@@ -1,2 +1,3 @@
 com.xcvk.platform.common.config.CommonAutoConfiguration
 com.xcvk.platform.common.config.JacksonLongAsStringConfig
+com.xcvk.platform.common.starter.internal.InternalApiAutoConfiguration

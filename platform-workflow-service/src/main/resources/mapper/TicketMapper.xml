@@ -30,6 +30,10 @@
         UPDATE wf_ticket
         SET status = #{targetStatus},
             status_remark = #{statusRemark},
+            closed_at = CASE
+                            WHEN #{targetStatus} IN ('RESOLVED', 'REJECTED') THEN NOW()
+                            ELSE closed_at
+                END,
             updated_at = NOW()
         WHERE id = #{ticketId}
           AND assignee_id = #{assigneeId}

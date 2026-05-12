@@ -871,12 +871,18 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         BizAssert.notNull(request, ErrorCode.PARAM_INVALID, "查询工单请求不能为空");
 
         Long creatorId = request.creatorId();
-        BizAssert.notNull(creatorId, ErrorCode.PARAM_INVALID, TicketErrorMessages.CREATOR_ID_REQUIRED);
+        Long assigneeId = request.assigneeId();
+
+        BizAssert.isTrue(
+                creatorId != null || assigneeId != null,
+                ErrorCode.PARAM_INVALID,
+                "查询工单用户范围不能为空"
+        );
 
         boolean detailQuery = StringUtils.hasText(request.ticketNo());
 
         LambdaQueryWrapper<Ticket> qw = Wrappers.lambdaQuery(Ticket.class);
-        qw.eq(Ticket::getCreatorId, creatorId);
+        applyAiTicketScope(qw, request);
 
         if (StringUtils.hasText(request.ticketNo())) {
             qw.eq(Ticket::getTicketNo, request.ticketNo().trim());
@@ -915,6 +921,53 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 Math.toIntExact(ticketPage.getTotal()),
                 items
         );
+    }
+
+    private void applyAiTicketScope(LambdaQueryWrapper<Ticket> qw, QueryAiTicketRequest request) {
+        String scope = StringUtils.hasText(request.scope())
+                ? request.scope().trim()
+                : "CREATED_BY_ME";
+
+        Long creatorId = request.creatorId();
+        Long assigneeId = request.assigneeId();
+
+        switch (scope) {
+            case "ASSIGNED_TO_ME" -> {
+                BizAssert.notNull(assigneeId, ErrorCode.PARAM_INVALID, "处理人ID不能为空");
+                qw.eq(Ticket::getAssigneeId, assigneeId);
+            }
+            case "RELATED_TO_ME" -> {
+                BizAssert.isTrue(
+                        creatorId != null || assigneeId != null,
+                        ErrorCode.PARAM_INVALID,
+                        "相关工单查询范围不能为空"
+                );
+
+                qw.and(wrapper -> {
+                    boolean hasCondition = false;
+
+                    if (creatorId != null) {
+                        wrapper.eq(Ticket::getCreatorId, creatorId);
+                        hasCondition = true;
+                    }
+
+                    if (assigneeId != null) {
+                        if (hasCondition) {
+                            wrapper.or();
+                        }
+                        wrapper.eq(Ticket::getAssigneeId, assigneeId);
+                    }
+                });
+            }
+            case "CREATED_BY_ME" -> {
+                BizAssert.notNull(creatorId, ErrorCode.PARAM_INVALID, TicketErrorMessages.CREATOR_ID_REQUIRED);
+                qw.eq(Ticket::getCreatorId, creatorId);
+            }
+            default -> {
+                BizAssert.notNull(creatorId, ErrorCode.PARAM_INVALID, TicketErrorMessages.CREATOR_ID_REQUIRED);
+                qw.eq(Ticket::getCreatorId, creatorId);
+            }
+        }
     }
 
     private QueryAiTicketItem toQueryAiTicketItem(Ticket ticket) {

@@ -59,3 +59,5 @@ platform:
 
   remote:
     ai-base-url: http://localhost:8084
+  internal:
+    token: platform-internal-dev-token

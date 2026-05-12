@@ -36,6 +36,10 @@ public class QueryTicketTool {
 
     private static final int DEFAULT_PAGE_SIZE = 5;
 
+    private static final String SCOPE_CREATED_BY_ME = "CREATED_BY_ME";
+    private static final String SCOPE_ASSIGNED_TO_ME = "ASSIGNED_TO_ME";
+    private static final String SCOPE_RELATED_TO_ME = "RELATED_TO_ME";
+
     /**
      * 当前工单编号格式来自 workflow-service：
      * TK + yyyyMMdd + 6位序列。
@@ -74,14 +78,55 @@ public class QueryTicketTool {
     private QueryAiTicketRequest buildQueryRequest(CurrentLoginIdentity identity, String question) {
         String ticketNo = extractTicketNo(question);
         String status = inferStatus(question);
+        String scope = inferScope(question);
+
+        Long creatorId = null;
+        Long assigneeId = null;
+
+        if (SCOPE_ASSIGNED_TO_ME.equals(scope)) {
+            assigneeId = identity.userId();
+        } else if (SCOPE_CREATED_BY_ME.equals(scope)) {
+            creatorId = identity.userId();
+        } else {
+            creatorId = identity.userId();
+            assigneeId = identity.userId();
+        }
 
         return new QueryAiTicketRequest(
-                identity.userId(),
+                creatorId,
+                assigneeId,
+                scope,
                 ticketNo,
                 status,
                 DEFAULT_PAGE_NUM,
                 DEFAULT_PAGE_SIZE
         );
+    }
+
+    private String inferScope(String question) {
+        if (!StringUtils.hasText(question)) {
+            return SCOPE_RELATED_TO_ME;
+        }
+
+        String normalized = question.toLowerCase().replaceAll("\\s+", "");
+
+        if (containsAny(
+                normalized,
+                "我负责", "我处理", "我接的", "分配给我", "指派给我",
+                "待我处理", "需要我处理", "我名下处理", "需要我处理", "我需要处理"
+        )) {
+            return SCOPE_ASSIGNED_TO_ME;
+        }
+
+        if (containsAny(
+                normalized,
+                "我提交", "我创建", "我发起", "我提的", "我申请",
+                "我报的", "我开的"
+        )) {
+            return SCOPE_CREATED_BY_ME;
+        }
+
+        return SCOPE_RELATED_TO_ME;
     }
 
     private QueryAiTicketResponse unwrapQueryTicketResult(Result<QueryAiTicketResponse> ticketResult) {
@@ -122,7 +167,7 @@ public class QueryTicketTool {
             return buildDetailAnswer(tickets.get(0));
         }
 
-        return buildListAnswer(tickets, response.total());
+        return buildListAnswer(tickets, response.total(), request.scope());
     }
 
     private String buildDetailAnswer(QueryAiTicketItem ticket) {
@@ -148,10 +193,10 @@ public class QueryTicketTool {
         return builder.toString();
     }
 
-    private String buildListAnswer(List<QueryAiTicketItem> tickets, Integer total) {
+    private String buildListAnswer(List<QueryAiTicketItem> tickets, Integer total, String scope) {
         StringBuilder builder = new StringBuilder();
 
-        builder.append("你最近的工单如下");
+        builder.append(scopeListTitle(scope));
         if (total != null) {
             builder.append("，共查询到 ").append(total).append(" 条");
         }
@@ -178,6 +223,18 @@ public class QueryTicketTool {
         }
 
         return builder.toString().trim();
+    }
+
+    private String scopeListTitle(String scope) {
+        if (SCOPE_ASSIGNED_TO_ME.equals(scope)) {
+            return "你负责处理的工单如下";
+        }
+
+        if (SCOPE_CREATED_BY_ME.equals(scope)) {
+            return "你提交的工单如下";
+        }
+
+        return "与你相关的工单如下";
     }
 
     private String extractTicketNo(String question) {
