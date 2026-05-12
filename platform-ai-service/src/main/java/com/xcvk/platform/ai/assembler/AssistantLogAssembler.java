@@ -7,6 +7,8 @@ import com.xcvk.platform.ai.model.internal.AssistantIntentDecision;
 import com.xcvk.platform.ai.model.vo.AssistantChatResponse;
 import com.xcvk.platform.api.contract.workflow.model.CreateAiTicketRequest;
 import com.xcvk.platform.api.contract.workflow.model.CreateAiTicketResponse;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketRequest;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketResponse;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.ai.support.AssistantIdentityResolver;
 import lombok.RequiredArgsConstructor;
@@ -114,4 +116,14 @@ public class AssistantLogAssembler {
         }
     }
 
+    public void markQueryTicketRequest(AiAgentExecutionLog executionLog, QueryAiTicketRequest request) {
+        executionLog.setToolName(TOOL_QUERY_TICKET);
+        executionLog.setToolExecuted(true);
+        executionLog.setToolRequest(toLogJson(request));
+    }
+
+    public void markQueryTicketSuccess(AiAgentExecutionLog executionLog, QueryAiTicketResponse response) {
+        executionLog.setToolResponse(toLogJson(response));
+        executionLog.setExecutionStatus(EXECUTION_STATUS_SUCCESS);
+    }
 }

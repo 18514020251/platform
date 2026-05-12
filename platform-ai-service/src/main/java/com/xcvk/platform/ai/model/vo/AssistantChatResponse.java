@@ -94,4 +94,15 @@ public record AssistantChatResponse(
                 null
         );
     }
+
+    public static AssistantChatResponse ticketQueried(String answer) {
+        return new AssistantChatResponse(
+                "TICKET_QUERY",
+                answer,
+                true,
+                "queryTicket",
+                null,
+                null
+        );
+    }
 }

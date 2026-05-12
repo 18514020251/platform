@@ -74,4 +74,5 @@ public interface TicketMapper extends BaseMapper<Ticket> {
                      @Param("expectedStatus") String expectedStatus,
                      @Param("targetStatus")  String targetStatus
     );
+
 }

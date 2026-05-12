@@ -16,6 +16,7 @@ import com.xcvk.platform.ai.service.RagChatService;
 import com.xcvk.platform.ai.support.AssistantIntentClassifier;
 import com.xcvk.platform.ai.support.AssistantTicketScopeValidator;
 import com.xcvk.platform.ai.tool.CreateTicketTool;
+import com.xcvk.platform.ai.tool.QueryTicketTool;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
@@ -23,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import static com.xcvk.platform.ai.constant.AssistantConstants.INTENT_TICKET_CREATE;
+import static com.xcvk.platform.ai.constant.AssistantConstants.INTENT_TICKET_QUERY;
 
 /**
  * 智能助手服务实现。
@@ -45,6 +47,8 @@ public class AssistantServiceImpl implements AssistantService {
     private final AssistantTicketScopeValidator ticketScopeValidator;
 
     private final CreateTicketTool createTicketTool;
+
+    private final QueryTicketTool queryTicketTool;
 
     private final AssistantLogAssembler logAssembler;
 
@@ -86,7 +90,22 @@ public class AssistantServiceImpl implements AssistantService {
             return handleTicketCreate(identity, request, decision, executionLog);
         }
 
+        if (INTENT_TICKET_QUERY.equals(decision.intent())) {
+            return handleTicketQuery(identity, request, executionLog);
+        }
+
         return handleKnowledgeQa(request, executionLog);
+    }
+
+    /**
+     * 处理查询工单。
+     */
+    private AssistantChatResponse handleTicketQuery(CurrentLoginIdentity identity,
+                                                    AssistantChatRequest request,
+                                                    AiAgentExecutionLog executionLog) {
+        String answer = queryTicketTool.query(identity, request, executionLog);
+
+        return AssistantChatResponse.ticketQueried(answer);
     }
 
     /**

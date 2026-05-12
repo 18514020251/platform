@@ -18,9 +18,13 @@ public final class AssistantConstants {
 
     public static final String INTENT_TICKET_CREATE = "TICKET_CREATE";
 
+    public static final String INTENT_TICKET_QUERY = "TICKET_QUERY";
+
     public static final String INTENT_UNSUPPORTED_REQUEST = "UNSUPPORTED_REQUEST";
 
     public static final String TOOL_CREATE_TICKET = "createTicket";
+
+    public static final String TOOL_QUERY_TICKET = "queryTicket";
 
     public static final String TICKET_TYPE_IT_REPAIR = "IT_REPAIR";
 

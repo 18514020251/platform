@@ -2,6 +2,8 @@ package com.xcvk.platform.api.contract.workflow.client;
 
 import com.xcvk.platform.api.contract.workflow.model.CreateAiTicketRequest;
 import com.xcvk.platform.api.contract.workflow.model.CreateAiTicketResponse;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketRequest;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketResponse;
 import com.xcvk.platform.common.domain.Result;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,4 +36,13 @@ public interface WorkflowTicketClient {
      */
     @PostMapping("/internal/ai/tickets")
     Result<CreateAiTicketResponse> createTicketByAi(@RequestBody CreateAiTicketRequest request);
+
+    /**
+     * AI Agent 查询当前用户工单。
+     *
+     * @param request AI 查询工单请求
+     * @return 查询结果
+     */
+    @PostMapping("/internal/ai/tickets/query")
+    Result<QueryAiTicketResponse> queryTicketByAi(@RequestBody QueryAiTicketRequest request);
 }

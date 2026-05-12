@@ -58,17 +58,43 @@ public class AssistantIntentClassifier {
     private AssistantIntentDecision fallbackClassify(String question) {
         String lower = question.toLowerCase(Locale.ROOT);
 
-        boolean explicitTicket = containsAny(
+        boolean explicitQuery = containsAny(
                 lower,
-                "工单", "提单", "报修", "帮我处理", "帮我开通", "创建", "申请"
+                "查询工单", "查看工单", "查工单", "查一下工单",
+                "我的工单", "最近工单", "工单状态", "工单进度",
+                "处理到哪", "处理进度", "进度怎么样",
+                "待处理工单", "处理中工单", "已完成工单", "已解决工单",
+                "工单详情", "工单内容"
+        );
+
+        boolean ticketNoQuery = containsTicketNo(question);
+
+        if (explicitQuery || ticketNoQuery) {
+            return new AssistantIntentDecision(
+                    INTENT_TICKET_QUERY,
+                    0.70,
+                    "",
+                    "",
+                    question,
+                    DEFAULT_PRIORITY
+            );
+        }
+
+        boolean explicitTicketCreate = containsAny(
+                lower,
+                "提工单", "创建工单", "新建工单", "提交工单",
+                "帮我提单", "帮我提个单", "帮我报修",
+                "帮我处理", "帮我开通", "申请开通",
+                "报修", "派人处理"
         );
 
         boolean issue = containsAny(
                 lower,
-                "不能", "无法", "连不上", "登录不上", "报错", "故障", "坏了", "蓝屏", "没权限", "访问不了"
+                "不能", "无法", "连不上", "登录不上", "报错",
+                "故障", "坏了", "蓝屏", "没权限", "访问不了"
         );
 
-        if (explicitTicket || issue) {
+        if (explicitTicketCreate || issue) {
             String ticketTypeCode = inferTicketType(question);
             return new AssistantIntentDecision(
                     INTENT_TICKET_CREATE,
@@ -90,6 +116,18 @@ public class AssistantIntentClassifier {
         );
     }
 
+    /**
+     * 判断是否有工单号
+     * */
+    private boolean containsTicketNo(String question) {
+        if (!StringUtils.hasText(question)) {
+            return false;
+        }
+
+        return question.matches(".*(?i)(TK|TICKET)[0-9A-Za-z\\-]{4,}.*");
+    }
+
+
     private AssistantIntentDecision normalizeDecision(String question, AssistantIntentDecision decision) {
         if (decision == null || !StringUtils.hasText(decision.intent())) {
             return fallbackClassify(question);
@@ -97,7 +135,45 @@ public class AssistantIntentClassifier {
 
         String intent = decision.intent().trim();
 
-        if (!INTENT_TICKET_CREATE.equals(intent)) {
+        if (INTENT_TICKET_QUERY.equals(intent)) {
+            return new AssistantIntentDecision(
+                    INTENT_TICKET_QUERY,
+                    decision.confidence(),
+                    "",
+                    "",
+                    StringUtils.hasText(decision.content()) ? decision.content().trim() : question,
+                    DEFAULT_PRIORITY
+            );
+        }
+
+        if (INTENT_TICKET_CREATE.equals(intent)) {
+            String ticketTypeCode = StringUtils.hasText(decision.ticketTypeCode())
+                    ? decision.ticketTypeCode().trim()
+                    : inferTicketType(question);
+
+            String title = StringUtils.hasText(decision.title())
+                    ? decision.title().trim()
+                    : buildDefaultTitle(question);
+
+            String content = StringUtils.hasText(decision.content())
+                    ? decision.content().trim()
+                    : question;
+
+            String priority = StringUtils.hasText(decision.priority())
+                    ? decision.priority().trim()
+                    : inferPriority(question);
+
+            return new AssistantIntentDecision(
+                    INTENT_TICKET_CREATE,
+                    decision.confidence(),
+                    ticketTypeCode,
+                    title,
+                    content,
+                    priority
+            );
+        }
+
+        if (INTENT_KNOWLEDGE_QA.equals(intent)) {
             return new AssistantIntentDecision(
                     INTENT_KNOWLEDGE_QA,
                     decision.confidence(),
@@ -108,30 +184,7 @@ public class AssistantIntentClassifier {
             );
         }
 
-        String ticketTypeCode = StringUtils.hasText(decision.ticketTypeCode())
-                ? decision.ticketTypeCode().trim()
-                : inferTicketType(question);
-
-        String title = StringUtils.hasText(decision.title())
-                ? decision.title().trim()
-                : buildDefaultTitle(question);
-
-        String content = StringUtils.hasText(decision.content())
-                ? decision.content().trim()
-                : question;
-
-        String priority = StringUtils.hasText(decision.priority())
-                ? decision.priority().trim()
-                : inferPriority(question);
-
-        return new AssistantIntentDecision(
-                INTENT_TICKET_CREATE,
-                decision.confidence(),
-                ticketTypeCode,
-                title,
-                content,
-                priority
-        );
+        return fallbackClassify(question);
     }
 
     private String extractJson(String text) {

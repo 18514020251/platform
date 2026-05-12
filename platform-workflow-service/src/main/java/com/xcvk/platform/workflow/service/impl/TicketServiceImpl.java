@@ -1,8 +1,13 @@
 package com.xcvk.platform.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketItem;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketRequest;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketResponse;
 import com.xcvk.platform.auth.starter.constant.PlatformRoleConstants;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.common.domain.PageResult;
@@ -67,6 +72,10 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     private static final String DEFAULT_PRIORITY = "MEDIUM";
     private static final Set<String> ALLOWED_UPDATE_TARGET_STATUS =
             Set.of(TicketStatusConstants.RESOLVED, TicketStatusConstants.REJECTED);
+
+    private static final int DEFAULT_PAGE_NUM = 1;
+
+    private static final int DEFAULT_PAGE_SIZE = 10;
 
     private final TicketTypeService ticketTypeService;
     private final SnowflakeIdGenerator idGenerator;
@@ -856,4 +865,84 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 ticket.getStatus()
         );
     }
+
+    @Override
+    public QueryAiTicketResponse queryTicketByAi(QueryAiTicketRequest request) {
+        BizAssert.notNull(request, ErrorCode.PARAM_INVALID, "查询工单请求不能为空");
+
+        Long creatorId = request.creatorId();
+        BizAssert.notNull(creatorId, ErrorCode.PARAM_INVALID, TicketErrorMessages.CREATOR_ID_REQUIRED);
+
+        boolean detailQuery = StringUtils.hasText(request.ticketNo());
+
+        LambdaQueryWrapper<Ticket> qw = Wrappers.lambdaQuery(Ticket.class);
+        qw.eq(Ticket::getCreatorId, creatorId);
+
+        if (StringUtils.hasText(request.ticketNo())) {
+            qw.eq(Ticket::getTicketNo, request.ticketNo().trim());
+        }
+
+        if (StringUtils.hasText(request.status())) {
+            qw.eq(Ticket::getStatus, request.status().trim());
+        }
+
+        qw.orderByDesc(Ticket::getCreatedAt);
+
+        int pageNum = request.pageNum() == null || request.pageNum() <= 0
+                ? DEFAULT_PAGE_NUM
+                : request.pageNum();
+
+        int pageSize = request.pageSize() == null || request.pageSize() <= 0
+                ? DEFAULT_PAGE_SIZE
+                : request.pageSize();
+
+        if (detailQuery) {
+            pageNum = 1;
+            pageSize = 1;
+        }
+
+        Page<Ticket> page = new Page<>(pageNum, pageSize);
+
+        Page<Ticket> ticketPage = baseMapper.selectPage(page, qw);
+
+        List<QueryAiTicketItem> items = ticketPage.getRecords()
+                .stream()
+                .map(this::toQueryAiTicketItem)
+                .toList();
+
+        return new QueryAiTicketResponse(
+                detailQuery ? "DETAIL" : "LIST",
+                Math.toIntExact(ticketPage.getTotal()),
+                items
+        );
+    }
+
+    private QueryAiTicketItem toQueryAiTicketItem(Ticket ticket) {
+        if (ticket == null) {
+            return null;
+        }
+
+        return new QueryAiTicketItem(
+                ticket.getId(),
+                ticket.getTicketNo(),
+                ticket.getTicketTypeId(),
+                ticket.getTicketTypeCode(),
+                ticket.getTicketTypeName(),
+                ticket.getTitle(),
+                ticket.getContent(),
+                ticket.getStatus(),
+                ticket.getPriority(),
+                ticket.getSource(),
+                ticket.getSourceRef(),
+                ticket.getCreatorId(),
+                ticket.getCreatorName(),
+                ticket.getAssigneeId(),
+                ticket.getAssigneeName(),
+                ticket.getClosedAt(),
+                ticket.getStatusRemark(),
+                ticket.getCreatedAt(),
+                ticket.getUpdatedAt()
+        );
+    }
+
 }

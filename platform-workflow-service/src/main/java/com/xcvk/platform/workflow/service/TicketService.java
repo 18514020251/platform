@@ -1,5 +1,7 @@
 package com.xcvk.platform.workflow.service;
 
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketRequest;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketResponse;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.common.domain.PageResult;
 import com.xcvk.platform.workflow.model.dto.AssignTicketRequest;
@@ -135,4 +137,12 @@ public interface TicketService {
                                         String ticketTypeCode, String title,
                                         String content, String priority,
                                         String sourceRef);
+
+    /**
+     * AI Agent 搜索工单
+     *
+     * @param request 搜索条件
+     * @return 工单列表
+     */
+    QueryAiTicketResponse queryTicketByAi(QueryAiTicketRequest request);
 }

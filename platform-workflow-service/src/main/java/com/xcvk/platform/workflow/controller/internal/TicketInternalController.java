@@ -2,6 +2,8 @@ package com.xcvk.platform.workflow.controller.internal;
 
 import com.xcvk.platform.api.contract.workflow.model.CreateAiTicketRequest;
 import com.xcvk.platform.api.contract.workflow.model.CreateAiTicketResponse;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketRequest;
+import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketResponse;
 import com.xcvk.platform.common.domain.Result;
 import com.xcvk.platform.workflow.model.vo.CreateTicketResponse;
 import com.xcvk.platform.workflow.service.TicketService;
@@ -49,5 +51,16 @@ public class TicketInternalController {
                 response.ticketNo(),
                 response.status()
         ));
+    }
+
+    /**
+     * AI Agent 查询当前用户工单。
+     *
+     * @param request AI 工单查询请求
+     * @return 工单查询结果
+     */
+    @PostMapping("/query")
+    public Result<QueryAiTicketResponse> queryTicketByAi(@RequestBody QueryAiTicketRequest request) {
+        return Result.success(ticketService.queryTicketByAi(request));
     }
 }
