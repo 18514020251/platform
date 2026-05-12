@@ -94,6 +94,7 @@ public class AssistantServiceImpl implements AssistantService {
      */
     private AssistantChatResponse handleKnowledgeQa(AssistantChatRequest request,
                                                     AiAgentExecutionLog executionLog) {
+
         RagChatResponse ragResponse = ragChatService.chat(new RagChatRequest(
                 request.question(),
                 request.safeTopK(),

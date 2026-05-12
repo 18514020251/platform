@@ -113,4 +113,5 @@ public class AssistantLogAssembler {
             return truncate(String.valueOf(value), MAX_JSON_LOG_LENGTH);
         }
     }
+
 }
