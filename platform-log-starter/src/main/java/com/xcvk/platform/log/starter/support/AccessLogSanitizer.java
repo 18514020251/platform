@@ -142,16 +142,27 @@ public class AccessLogSanitizer {
     }
 
     private boolean isSensitiveField(String fieldName) {
-        if (fieldName == null) {
+        if (fieldName == null || fieldName.isBlank()) {
             return false;
         }
 
+        String normalizedFieldName = normalizeFieldName(fieldName);
+
         for (String sensitiveField : properties.getSensitiveFields()) {
-            if (fieldName.equalsIgnoreCase(sensitiveField)) {
+            if (normalizedFieldName.equals(normalizeFieldName(sensitiveField))) {
                 return true;
             }
         }
+
         return false;
+    }
+
+    private String normalizeFieldName(String fieldName) {
+        return fieldName
+                .trim()
+                .replace("_", "")
+                .replace("-", "")
+                .toLowerCase(Locale.ROOT);
     }
 
     private boolean shouldSkip(Object arg) {
