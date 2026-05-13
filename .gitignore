@@ -1,43 +1,108 @@
-HELP.md
+# =========================
+# Build output
+# =========================
 target/
-.mvn/wrapper/maven-wrapper.jar
+build/
+out/
+*.class
+*.jar
+*.war
+*.ear
+
+# Keep source-level target/build folders only if they are intentionally committed
 !**/src/main/**/target/
 !**/src/test/**/target/
+!**/src/main/**/build/
+!**/src/test/**/build/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
+# =========================
+# Maven / Gradle
+# =========================
+.mvn/wrapper/maven-wrapper.jar
+.gradle/
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# =========================
+# IDE files
+# =========================
+.idea/
 *.iml
+*.iws
 *.ipr
-logs
-*.log
-error.log
-app.log
-spring.log
 
-.env
-.env.*
-!.env.example
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+.apt_generated/
+.factorypath
 
-### NetBeans ###
+.vscode/
+
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
 
-### VS Code ###
-.vscode/
+# =========================
+# Runtime logs
+# =========================
+logs/
+*.log
+error.log
+app.log
+spring.log
+hs_err_pid*
+replay_pid*
+
+# =========================
+# Local env / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# Local Spring override files. Keep application.yml in Git.
+application-dev-local.yml
+application-dev-local.yaml
+application-local-private.yml
+application-local-private.yaml
+
+# =========================
+# Docker local data volumes
+# =========================
+docker/**/data/
+docker/**/logs/
+docker/**/tmp/
+
+# Keep database initialization scripts
+!docker/**/init/
+!docker/**/init/**
+
+# =========================
+# Uploads / generated files
+# =========================
+uploads/
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Test reports / coverage
+# =========================
+coverage/
+htmlcov/
+surefire-reports/
+failsafe-reports/
+*.exec
 

@@ -20,6 +20,7 @@ import com.xcvk.platform.workflow.assembler.TicketAssembler;
 import com.xcvk.platform.workflow.constant.TicketErrorMessages;
 import com.xcvk.platform.workflow.constant.TicketSourceConstants;
 import com.xcvk.platform.workflow.constant.TicketStatusConstants;
+import com.xcvk.platform.workflow.domain.TicketStatusMachine;
 import com.xcvk.platform.workflow.model.cmd.CreateTicketCmd;
 import com.xcvk.platform.workflow.model.dto.AssignTicketRequest;
 import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
@@ -45,7 +46,6 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Set;
 
 /**
  * 工单服务实现类
@@ -70,8 +70,7 @@ import java.util.Set;
 public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> implements TicketService {
 
     private static final String DEFAULT_PRIORITY = "MEDIUM";
-    private static final Set<String> ALLOWED_UPDATE_TARGET_STATUS =
-            Set.of(TicketStatusConstants.RESOLVED, TicketStatusConstants.REJECTED);
+
 
     private static final int DEFAULT_PAGE_NUM = 1;
 
@@ -585,7 +584,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         );
 
         BizAssert.isTrue(
-                TicketStatusConstants.PENDING.equals(ticket.getStatus()),
+                TicketStatusMachine.canTransfer(ticket.getStatus(), TicketStatusConstants.PROCESSING),
                 ErrorCode.BIZ_ERROR,
                 TicketErrorMessages.TICKET_STATUS_NOT_ALLOW_ACCEPT
         );
@@ -662,7 +661,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
 
         String targetStatus = safeTrim(request.targetStatus());
         BizAssert.isTrue(
-                ALLOWED_UPDATE_TARGET_STATUS.contains(targetStatus),
+                TicketStatusMachine.isAllowedProcessResultStatus(targetStatus),
                 ErrorCode.PARAM_INVALID,
                 TicketErrorMessages.STATUS_TARGET_INVALID
         );
@@ -707,16 +706,13 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      * @param targetStatus 目标状态
      */
     private void validateStatusTransition(Ticket ticket, String targetStatus) {
-        BizAssert.isTrue(
-                TicketStatusConstants.PROCESSING.equals(ticket.getStatus()),
-                ErrorCode.BIZ_ERROR,
-                TicketErrorMessages.TICKET_STATUS_NOT_ALLOW_UPDATE
-        );
+        String currentStatus = safeTrim(ticket.getStatus());
+        String target = safeTrim(targetStatus);
 
         BizAssert.isTrue(
-                ALLOWED_UPDATE_TARGET_STATUS.contains(safeTrim(targetStatus)),
-                ErrorCode.PARAM_INVALID,
-                TicketErrorMessages.STATUS_TARGET_INVALID
+                TicketStatusMachine.canTransfer(currentStatus, target),
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.TICKET_STATUS_NOT_ALLOW_UPDATE
         );
     }
 
@@ -808,7 +804,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         );
 
         BizAssert.isTrue(
-                TicketStatusConstants.PENDING.equals(ticket.getStatus()),
+                TicketStatusMachine.canTransfer(ticket.getStatus(), TicketStatusConstants.PROCESSING),
                 ErrorCode.BIZ_ERROR,
                 TicketErrorMessages.TICKET_STATUS_NOT_ALLOW_ASSIGN
         );

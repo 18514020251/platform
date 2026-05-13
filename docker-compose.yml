@@ -4,10 +4,10 @@ services:
     container_name: platform-mysql
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT:-3306}:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: "07210521"
-      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./docker/mysql/data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
@@ -16,7 +16,7 @@ services:
       --collation-server=utf8mb4_unicode_ci
       --default-time-zone=+08:00
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p07210521"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p${MYSQL_ROOT_PASSWORD} || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -26,7 +26,7 @@ services:
     container_name: platform-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - ./docker/redis/data:/data
     command: ["redis-server", "--appendonly", "yes"]
@@ -44,8 +44,9 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./docker/minio/data:/data
     command: server /data --console-address ":9001"
@@ -55,9 +56,9 @@ services:
     container_name: platform-mongodb
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "${MONGODB_PORT:-27017}:27017"
     environment:
-      TZ: Asia/Shanghai
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./docker/mongodb/data:/data/db
     healthcheck:
@@ -72,13 +73,13 @@ services:
     container_name: platform-elasticsearch
     restart: unless-stopped
     ports:
-      - "9200:9200"
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
       - "9300:9300"
     environment:
       discovery.type: single-node
-      xpack.security.enabled: "false"
-      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
-      TZ: Asia/Shanghai
+      xpack.security.enabled: "${ELASTICSEARCH_SECURITY_ENABLED:-false}"
+      ES_JAVA_OPTS: "${ES_JAVA_OPTS:--Xms1g -Xmx1g}"
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./docker/es/data:/usr/share/elasticsearch/data
     healthcheck:
@@ -95,6 +96,7 @@ services:
       - "5602:5601"
     environment:
       ELASTICSEARCH_HOSTS: '["http://platform-elasticsearch:9200"]'
+      TZ: ${TZ:-Asia/Shanghai}
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -107,9 +109,10 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: Programmer
-      RABBITMQ_DEFAULT_PASS: 07210521
-      RABBITMQ_DEFAULT_VHOST: /Programmer
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-platform}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-/platform}
+      TZ: ${TZ:-Asia/Shanghai}
     volumes:
       - ./docker/rabbitmq/data:/var/lib/rabbitmq
 
@@ -124,7 +127,7 @@ services:
     environment:
       MODE: standalone
       PREFER_HOST_MODE: hostname
-      TZ: Asia/Shanghai
+      TZ: ${TZ:-Asia/Shanghai}
 
   jaeger:
     image: jaegertracing/all-in-one:1.57
@@ -136,6 +139,7 @@ services:
       - "4318:4318"
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
+      TZ: ${TZ:-Asia/Shanghai}
 
 networks:
   default:

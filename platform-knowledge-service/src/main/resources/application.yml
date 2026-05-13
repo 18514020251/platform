@@ -1,19 +1,25 @@
+application:
+  version: ${APP_VERSION:1.0.0}
+
+server:
+  port: ${KNOWLEDGE_SERVICE_PORT:8083}
+
 spring:
   application:
     name: platform-knowledge-service
 
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/platform_knowledge?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
-    username: root
-    password: '${MYSQL_PASSWORD}'
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:${MYSQL_PORT:3306}/platform_knowledge?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://127.0.0.1:27017/platform_log}
-
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
 
   cloud:
     nacos:
@@ -23,12 +29,9 @@ spring:
         group: ${NACOS_GROUP:DEFAULT_GROUP}
 
   elasticsearch:
-    uris: http://127.0.0.1:9200
+    uris: ${ELASTICSEARCH_URIS:http://127.0.0.1:9200}
     connection-timeout: 5s
     socket-timeout: 30s
-
-server:
-  port: 8083
 
 mybatis-plus:
   configuration:
@@ -45,6 +48,12 @@ sa-token:
   token-style: uuid
 
 platform:
+  remote:
+    ai-base-url: ${AI_SERVICE_URL:http://localhost:8084}
+
+  internal:
+    token: ${PLATFORM_INTERNAL_TOKEN}
+
   access-log:
     enabled: true
     mongo-enabled: ${ACCESS_LOG_MONGO_ENABLED:true}
@@ -56,8 +65,3 @@ platform:
     async-queue-capacity: ${ACCESS_LOG_ASYNC_QUEUE_CAPACITY:1000}
     async-thread-name-prefix: ${ACCESS_LOG_ASYNC_THREAD_NAME_PREFIX:access-log-}
     async-await-termination-seconds: ${ACCESS_LOG_ASYNC_AWAIT_TERMINATION_SECONDS:3}
-
-  remote:
-    ai-base-url: http://localhost:8084
-  internal:
-    token: platform-internal-dev-token
