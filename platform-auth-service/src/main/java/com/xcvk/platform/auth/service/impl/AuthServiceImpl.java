@@ -2,6 +2,7 @@ package com.xcvk.platform.auth.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.xcvk.platform.api.contract.auth.model.InternalUserInfoResponse;
 import com.xcvk.platform.common.enums.CommonStatusEnum;
 import com.xcvk.platform.auth.model.dto.LoginRequest;
 import com.xcvk.platform.auth.model.entity.SysDept;
@@ -251,5 +252,35 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return dept.getDeptName();
+    }
+
+    @Override
+    public InternalUserInfoResponse getInternalUserInfo(Long userId) {
+        BizAssert.notNull(userId, ErrorCode.PARAM_INVALID, "用户ID不能为空");
+
+        SysUser user = findUserById(userId);
+
+        BizAssert.notNull(
+                user,
+                ErrorCode.NOT_FOUND,
+                "用户不存在"
+        );
+
+        BizAssert.isTrue(
+                CommonStatusEnum.isEnabled(user.getStatus()),
+                ErrorCode.FORBIDDEN,
+                "用户已被禁用"
+        );
+
+        List<String> roleCodes = getEnabledRoleCodes(user.getId());
+
+        return new InternalUserInfoResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getRealName(),
+                user.getDeptId(),
+                user.getStatus(),
+                roleCodes
+        );
     }
 }

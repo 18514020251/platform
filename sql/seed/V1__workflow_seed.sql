@@ -71,7 +71,7 @@ INSERT INTO wf_ticket (
           2006, 'TK-2006', 1002, 'ACCOUNT_ISSUE', '账号问题',
           'Git仓库访问被拒绝',
           '拉取代码时提示无访问权限，怀疑仓库权限被移除。',
-          'WAITING_INFO', 'MEDIUM', 'AI_AGENT', 'ai-session-20260420-002',
+          'PROCESSING', 'MEDIUM', 'AI_AGENT', 'ai-session-20260420-002',
           2, '普通员工', 1, '系统管理员',
           NULL, NOW(), NOW()
       ),

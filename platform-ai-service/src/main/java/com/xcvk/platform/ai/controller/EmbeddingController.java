@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
  * @date 2026-04-27
  */
 @RestController
-@RequestMapping("/embeddings")
+@RequestMapping("/internal/embeddings")
 @RequiredArgsConstructor
 public class EmbeddingController {
 

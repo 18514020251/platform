@@ -26,6 +26,6 @@ public interface EmbedClient {
      * @param request 文本向量化请求
      * @return 文本向量化响应
      */
-    @PostMapping("/embeddings")
+    @PostMapping("/internal/embeddings")
     EmbeddingResponse embedTexts(@RequestBody EmbeddingRequest request);
 }

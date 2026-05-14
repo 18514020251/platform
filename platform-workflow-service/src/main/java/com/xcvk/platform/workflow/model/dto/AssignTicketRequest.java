@@ -1,20 +1,16 @@
 package com.xcvk.platform.workflow.model.dto;
 
+import jakarta.validation.constraints.NotNull;
+
 /**
- * 管理员派发工单请求
+ * 管理员派发工单请求。
  *
- * <p>
- *     管理员通过该接口将工单派发给指定处理人。
- *     管理员指定处理人id和处理人名称，
- *     系统将相关工单信息发送给处理人。
- * </p>
- *
- * @author Programmer
- * @version 1.0
- * @date 2026-04-22 15:07
+ * <p>前端只传处理人ID，处理人姓名由后端通过 auth-service 查询，
+ * 避免前端伪造处理人姓名。</p>
  */
 public record AssignTicketRequest(
-        Long assigneeId,
-        String assigneeName
+
+        @NotNull(message = "处理人ID不能为空")
+        Long assigneeId
 ) {
 }

@@ -155,28 +155,6 @@ public class TicketAssembler {
         );
     }
 
-    public TicketManageListItemVO toTicketManageListItemVO(TicketIndex ticketIndex) {
-        if (ticketIndex == null) {
-            return null;
-        }
-
-        return new TicketManageListItemVO(
-                ticketIndex.getId(),
-                ticketIndex.getTicketNo(),
-                ticketIndex.getTicketTypeCode(),
-                ticketIndex.getTicketTypeName(),
-                ticketIndex.getTitle(),
-                ticketIndex.getStatus(),
-                ticketIndex.getPriority(),
-                ticketIndex.getSource(),
-                ticketIndex.getCreatorId(),
-                ticketIndex.getCreatorName(),
-                ticketIndex.getAssigneeId(),
-                ticketIndex.getAssigneeName(),
-                ticketIndex.getCreatedAt(),
-                ticketIndex.getUpdatedAt()
-        );
-    }
 
     /**
      * 构建创建工单命令对象。
@@ -203,4 +181,5 @@ public class TicketAssembler {
                 null
         );
     }
+
 }

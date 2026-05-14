@@ -44,6 +44,9 @@ public final class TicketErrorMessages {
     public static final String ASSIGN_PERMISSION_DENIED = "无权限派发工单";
     public static final String TICKET_STATUS_NOT_ALLOW_ASSIGN = "当前工单状态不允许派发";
     public static final String TICKET_ALREADY_ASSIGNED_OR_STATUS_CHANGED = "工单已被派发或状态已变化";
+    public static final String ASSIGNEE_NOT_FOUND_OR_DISABLED = "处理人不存在或已被禁用";
+    public static final String ASSIGNEE_ROLE_INVALID = "处理人必须具备 SUPPORT 或 ADMIN 角色";
+    public static final String ASSIGNEE_QUERY_FAILED = "处理人信息查询失败";
 
     /**
      * 接单相关异常文案
@@ -64,4 +67,9 @@ public final class TicketErrorMessages {
     public static final String STATUS_UPDATE_PERMISSION_DENIED = "当前用户无权限更新工单状态";
     public static final String TICKET_STATUS_NOT_ALLOW_UPDATE = "当前工单状态不允许更新";
     public static final String TICKET_STATUS_UPDATE_CONFLICT = "工单状态已变更，请刷新后重试";
+
+    /**
+     * 工单操作流水相关异常文案
+     */
+    public static final String TICKET_EVENT_PERMISSION_DENIED = "当前用户无权限查看工单操作流水";
 }

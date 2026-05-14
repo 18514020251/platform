@@ -1,16 +1,18 @@
 package com.xcvk.platform.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.xcvk.platform.api.contract.auth.client.AuthUserClient;
+import com.xcvk.platform.api.contract.auth.model.InternalUserInfoResponse;
 import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketItem;
 import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketRequest;
 import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketResponse;
 import com.xcvk.platform.auth.starter.constant.PlatformRoleConstants;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.common.domain.PageResult;
+import com.xcvk.platform.common.domain.Result;
 import com.xcvk.platform.common.enums.CommonStatusEnum;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
@@ -28,18 +30,19 @@ import com.xcvk.platform.workflow.model.entity.Ticket;
 import com.xcvk.platform.workflow.model.entity.TicketType;
 import com.xcvk.platform.workflow.model.query.MyTicketQuery;
 import com.xcvk.platform.workflow.model.query.TicketManageQuery;
-import com.xcvk.platform.workflow.model.vo.CreateTicketResponse;
-import com.xcvk.platform.workflow.model.vo.TicketDetailVO;
-import com.xcvk.platform.workflow.model.vo.TicketListItemVO;
-import com.xcvk.platform.workflow.model.vo.TicketManageListItemVO;
+import com.xcvk.platform.workflow.model.vo.*;
 import com.xcvk.platform.workflow.repository.mapper.TicketMapper;
 import com.xcvk.platform.workflow.search.assembler.TicketSearchAssembler;
+import com.xcvk.platform.workflow.search.model.index.TicketIndex;
 import com.xcvk.platform.workflow.search.repository.TicketIndexRepository;
+import com.xcvk.platform.workflow.service.SearchSyncTaskService;
+import com.xcvk.platform.workflow.service.TicketEventService;
 import com.xcvk.platform.workflow.service.TicketService;
 import com.xcvk.platform.workflow.service.TicketTypeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
@@ -81,6 +84,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     private final TicketAssembler ticketAssembler;
     private final TicketIndexRepository ticketIndexRepository;
     private final TicketSearchAssembler ticketSearchAssembler;
+    private final TicketEventService ticketEventService;
+    private final AuthUserClient authUserClient;
+    private final SearchSyncTaskService searchSyncTaskService;
 
     /**
      * 创建工单主流程。
@@ -96,6 +102,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     // TODO 后续修改逻辑为es查询失败降级MySQL
     // TODO es后续改为异步
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CreateTicketResponse createTicket(Long creatorId, String creatorName,
                                              String ticketTypeCode, String title,
                                              String content, String priority) {
@@ -115,7 +122,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         int rows = baseMapper.insert(ticket);
         DbAssert.affectedOne(rows, TicketErrorMessages.CREATE_FAILED);
 
-        syncTicketToSearchIndex(ticket);
+        ticketEventService.recordCreateEvent(ticket, creatorId, creatorName);
+
+        searchSyncTaskService.enqueueTicketUpsert(ticketId);
 
         return new CreateTicketResponse(
                 ticket.getId(),
@@ -149,19 +158,24 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
     }
 
     /**
-     *  同步工单到搜索索引
-     * */
-    private void syncTicketToSearchIndex(Long ticketId) {
-        if (ticketId == null) {
-            return;
-        }
+     * 同步工单到搜索索引。
+     *
+     * <p>该方法由搜索同步任务处理器调用。这里不要吞掉异常，
+     * 否则外层 SearchSyncTaskProcessor 无法感知失败，也就无法进入重试流程。</p>
+     *
+     * @param ticketId 工单ID
+     */
+    @Override
+    public void syncTicketToSearchIndex(Long ticketId) {
+        BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
 
         Ticket latestTicket = getById(ticketId);
-        if (latestTicket == null) {
-            return;
-        }
+        BizAssert.notNull(latestTicket, ErrorCode.BIZ_ERROR, TicketErrorMessages.TICKET_NOT_FOUND);
 
-        syncTicketToSearchIndex(latestTicket);
+        TicketIndex index = ticketSearchAssembler.toIndex(latestTicket);
+        ticketIndexRepository.save(index);
+
+        log.info("同步工单到搜索索引成功：{}", ticketId);
     }
 
 
@@ -354,6 +368,37 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         return ticketAssembler.toTicketDetailVO(ticket);
     }
 
+
+    /**
+     * 查询处理侧工单详情。
+     *
+     * <p>管理员可以查看所有工单；
+     * 支持人员只能查看未分派工单或自己处理中的工单，
+     * 避免支持人员越权查看其他处理人已接手的工单。</p>
+     *
+     * @param identity 当前登录身份
+     * @param ticketId 工单ID
+     * @return 工单详情
+     */
+    @Override
+    public TicketDetailVO getManageTicketDetail(CurrentLoginIdentity identity, Long ticketId) {
+        validateCurrentLoginIdentity(identity);
+        BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
+
+        Ticket ticket = this.getById(ticketId);
+
+        BizAssert.notNull(
+                ticket,
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.TICKET_NOT_FOUND_OR_NO_PERMISSION
+        );
+
+        validateManageDetailPermission(identity, ticket);
+
+        return ticketAssembler.toTicketDetailVO(ticket);
+    }
+
+
     /**
      * 分页查询处理侧工单列表。
      *
@@ -381,6 +426,37 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
 
         return PageResult.of(records, page.getTotal(), pageNum, pageSize);
     }
+
+    /**
+     * 校验处理侧工单详情查看权限。
+     *
+     * <p>管理员可以查看全部；
+     * 支持人员只能查看未分派工单或自己已经接手的工单。</p>
+     *
+     * @param identity 当前登录身份
+     * @param ticket 工单实体
+     */
+    private void validateManageDetailPermission(CurrentLoginIdentity identity, Ticket ticket) {
+        List<String> roleCodes = identity.roleCodes();
+
+        boolean isAdmin = hasRole(roleCodes, PlatformRoleConstants.ADMIN);
+        boolean isSupport = hasRole(roleCodes, PlatformRoleConstants.SUPPORT);
+
+        if (isAdmin) {
+            return;
+        }
+
+        boolean isUnassigned = ticket.getAssigneeId() == null;
+        boolean isAssignedToMe = identity.userId() != null
+                && identity.userId().equals(ticket.getAssigneeId());
+
+        BizAssert.isTrue(
+                isSupport && (isUnassigned || isAssignedToMe),
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.TICKET_NOT_FOUND_OR_NO_PERMISSION
+        );
+    }
+
 
     /**
      * 构建处理侧工单分页查询条件。
@@ -515,6 +591,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      * @param ticketId 工单ID
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void acceptTicket(CurrentLoginIdentity identity, Long ticketId) {
         validateCurrentLoginIdentity(identity);
         BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
@@ -536,7 +613,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
 
         DbAssert.affectedOne(rows, TicketErrorMessages.TICKET_ALREADY_ACCEPTED_OR_STATUS_CHANGED);
 
-        syncTicketToSearchIndex(ticketId);
+        ticketEventService.recordAcceptEvent(ticket, identity.userId(), safeTrim(identity.realName()));
+
+        searchSyncTaskService.enqueueTicketUpsert(ticketId);
     }
 
     /**
@@ -612,6 +691,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      * @param request 更新状态请求
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updateTicketStatus(CurrentLoginIdentity identity, Long ticketId, UpdateTicketStatusRequest request) {
         validateCurrentLoginIdentity(identity);
         BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
@@ -625,17 +705,28 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         validateUpdateStatusPermission(identity, ticket);
         validateStatusTransition(ticket, request.targetStatus());
 
+        String targetStatus = safeTrim(request.targetStatus());
+        String statusRemark = safeTrim(request.statusRemark());
+
         int rows = baseMapper.updateTicketStatus(
                 ticketId,
                 ticket.getAssigneeId(),
                 ticket.getStatus(),
-                safeTrim(request.targetStatus()),
-                safeTrim(request.statusRemark())
+                targetStatus,
+                statusRemark
         );
 
         DbAssert.affectedOne(rows, TicketErrorMessages.TICKET_STATUS_UPDATE_CONFLICT);
 
-        syncTicketToSearchIndex(ticketId);
+        ticketEventService.recordStatusChangeEvent(
+                ticket,
+                identity.userId(),
+                safeTrim(identity.realName()),
+                targetStatus,
+                statusRemark
+        );
+
+        searchSyncTaskService.enqueueTicketUpsert(ticketId);
     }
 
     /**
@@ -724,8 +815,8 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      *
      * @param request 工单分配请求
      */
-    // TODO 后续修改逻辑，处理目标用户名不应该由前端传递
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void assignTicket(CurrentLoginIdentity identity, Long ticketId, AssignTicketRequest request) {
         validateCurrentLoginIdentity(identity);
         BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
@@ -734,22 +825,34 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         validateAssignTicketRequest(request);
         validateAssignPermission(identity);
 
+        InternalUserInfoResponse assignee = resolveAssignableAssignee(request.assigneeId());
+
         Ticket ticket = getById(ticketId);
         BizAssert.notNull(ticket, ErrorCode.BIZ_ERROR, TicketErrorMessages.TICKET_NOT_FOUND);
 
         validateAssignPreCheck(ticket);
 
+        String assigneeName = safeTrim(assignee.realName());
+
         int rows = baseMapper.assignTicket(
                 ticketId,
-                request.assigneeId(),
-                safeTrim(request.assigneeName()),
+                assignee.userId(),
+                assigneeName,
                 TicketStatusConstants.PENDING,
                 TicketStatusConstants.PROCESSING
         );
 
         DbAssert.affectedOne(rows, TicketErrorMessages.TICKET_ALREADY_ASSIGNED_OR_STATUS_CHANGED);
 
-        syncTicketToSearchIndex(ticketId);
+        ticketEventService.recordAssignEvent(
+                ticket,
+                identity.userId(),
+                safeTrim(identity.realName()),
+                assignee.userId(),
+                assigneeName
+        );
+
+        searchSyncTaskService.enqueueTicketUpsert(ticketId);
     }
 
     /**
@@ -766,11 +869,61 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 ErrorCode.PARAM_INVALID,
                 TicketErrorMessages.ASSIGNEE_ID_REQUIRED
         );
-        BizAssert.hasText(
-                request.assigneeName(),
-                ErrorCode.PARAM_INVALID,
-                TicketErrorMessages.ASSIGNEE_NAME_REQUIRED
+    }
+
+    /**
+     * 查询并校验可被分派的处理人。
+     *
+     * <p>处理人必须满足三个条件：
+     * 一是用户存在；
+     * 二是用户处于启用状态；
+     * 三是具备 SUPPORT 或 ADMIN 角色。</p>
+     *
+     * @param assigneeId 处理人ID
+     * @return 处理人内部用户信息
+     */
+    private InternalUserInfoResponse resolveAssignableAssignee(Long assigneeId) {
+        Result<InternalUserInfoResponse> result;
+
+        try {
+            result = authUserClient.getUserById(assigneeId);
+        } catch (Exception ex) {
+            throw new com.xcvk.platform.common.exception.BusinessException(
+                    ErrorCode.SERVICE_UNAVAILABLE,
+                    TicketErrorMessages.ASSIGNEE_QUERY_FAILED
+            );
+        }
+
+        BizAssert.notNull(
+                result,
+                ErrorCode.SERVICE_UNAVAILABLE,
+                TicketErrorMessages.ASSIGNEE_QUERY_FAILED
         );
+
+        BizAssert.isTrue(
+                result.getCode() == ErrorCode.SUCCESS.getCode() && result.getData() != null,
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.ASSIGNEE_NOT_FOUND_OR_DISABLED
+        );
+
+        InternalUserInfoResponse assignee = result.getData();
+
+        boolean canHandleTicket = hasRole(assignee.roleCodes(), PlatformRoleConstants.SUPPORT)
+                || hasRole(assignee.roleCodes(), PlatformRoleConstants.ADMIN);
+
+        BizAssert.isTrue(
+                canHandleTicket,
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.ASSIGNEE_ROLE_INVALID
+        );
+
+        BizAssert.hasText(
+                assignee.realName(),
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.ASSIGNEE_NOT_FOUND_OR_DISABLED
+        );
+
+        return assignee;
     }
 
     /**
@@ -826,6 +979,7 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
      * @return 工单创建结果
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public CreateTicketResponse createAiTicket(Long creatorId, String creatorName,
                                                String ticketTypeCode, String title,
                                                String content, String priority,
@@ -853,7 +1007,9 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
         int rows = baseMapper.insert(ticket);
         DbAssert.affectedOne(rows, TicketErrorMessages.CREATE_FAILED);
 
-        syncTicketToSearchIndex(ticket);
+        ticketEventService.recordCreateEvent(ticket, creatorId, creatorName);
+
+        searchSyncTaskService.enqueueTicketUpsert(ticketId);
 
         return new CreateTicketResponse(
                 ticket.getId(),
@@ -991,6 +1147,43 @@ public class TicketServiceImpl extends ServiceImpl<TicketMapper, Ticket> impleme
                 ticket.getStatusRemark(),
                 ticket.getCreatedAt(),
                 ticket.getUpdatedAt()
+        );
+    }
+
+    @Override
+    public List<TicketEventVO> listTicketEvents(CurrentLoginIdentity identity, Long ticketId) {
+        validateCurrentLoginIdentity(identity);
+        BizAssert.notNull(ticketId, ErrorCode.PARAM_INVALID, TicketErrorMessages.TICKET_ID_REQUIRED);
+
+        Ticket ticket = getById(ticketId);
+        BizAssert.notNull(ticket, ErrorCode.BIZ_ERROR, TicketErrorMessages.TICKET_NOT_FOUND);
+
+        validateTicketEventViewPermission(identity, ticket);
+
+        return ticketEventService.listTicketEvents(ticketId);
+    }
+
+    /**
+     * 校验工单操作流水查看权限。
+     *
+     * <p>当前最小闭环版允许以下用户查看：</p>
+     * <ul>
+     *     <li>管理员</li>
+     *     <li>工单创建人</li>
+     *     <li>当前工单处理人</li>
+     * </ul>
+     */
+    private void validateTicketEventViewPermission(CurrentLoginIdentity identity, Ticket ticket) {
+        boolean isAdmin = hasRole(identity.roleCodes(), PlatformRoleConstants.ADMIN);
+        boolean isSupport = hasRole(identity.roleCodes(), PlatformRoleConstants.SUPPORT);
+        boolean isCreator = identity.userId() != null && identity.userId().equals(ticket.getCreatorId());
+        boolean isAssignee = identity.userId() != null && identity.userId().equals(ticket.getAssigneeId());
+        boolean isUnassigned = ticket.getAssigneeId() == null;
+
+        BizAssert.isTrue(
+                isAdmin || isCreator || isAssignee || (isSupport && isUnassigned),
+                ErrorCode.BIZ_ERROR,
+                TicketErrorMessages.TICKET_EVENT_PERMISSION_DENIED
         );
     }
 

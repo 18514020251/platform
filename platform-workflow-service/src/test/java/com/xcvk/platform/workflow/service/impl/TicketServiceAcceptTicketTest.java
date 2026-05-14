@@ -11,6 +11,7 @@ import com.xcvk.platform.workflow.repository.mapper.TicketMapper;
 import com.xcvk.platform.workflow.search.assembler.TicketSearchAssembler;
 import com.xcvk.platform.workflow.search.model.index.TicketIndex;
 import com.xcvk.platform.workflow.search.repository.TicketIndexRepository;
+import com.xcvk.platform.workflow.service.TicketEventService;
 import com.xcvk.platform.workflow.service.TicketTypeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -31,10 +32,12 @@ class TicketServiceAcceptTicketTest {
     private TicketIndexRepository ticketIndexRepository;
     private TicketSearchAssembler ticketSearchAssembler;
     private TicketServiceImpl ticketService;
+    private TicketEventService ticketEventService;
 
     @BeforeEach
     void setUp() {
         ticketMapper = mock(TicketMapper.class);
+        ticketEventService = mock(TicketEventService.class);
 
         TicketTypeService ticketTypeService = mock(TicketTypeService.class);
         SnowflakeIdGenerator idGenerator = mock(SnowflakeIdGenerator.class);
@@ -48,7 +51,8 @@ class TicketServiceAcceptTicketTest {
                 idGenerator,
                 ticketAssembler,
                 ticketIndexRepository,
-                ticketSearchAssembler
+                ticketSearchAssembler,
+                ticketEventService
         );
 
         /*

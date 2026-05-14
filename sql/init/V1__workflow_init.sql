@@ -5,8 +5,10 @@
 CREATE DATABASE IF NOT EXISTS platform_workflow;
 USE platform_workflow;
 
+DROP TABLE IF EXISTS wf_ticket_event;
 DROP TABLE IF EXISTS wf_ticket;
 DROP TABLE IF EXISTS wf_ticket_type;
+DROP TABLE IF EXISTS search_sync_task;
 
 CREATE TABLE IF NOT EXISTS wf_ticket_type (
     id                    BIGINT PRIMARY KEY COMMENT '工单类型ID',
@@ -22,6 +24,24 @@ CREATE TABLE IF NOT EXISTS wf_ticket_type (
     UNIQUE KEY uk_wf_ticket_type_code (type_code),
     KEY idx_wf_ticket_type_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工单类型表';
+
+
+CREATE TABLE IF NOT EXISTS wf_ticket_event (
+    id              BIGINT PRIMARY KEY COMMENT '事件ID',
+    ticket_id       BIGINT       NOT NULL COMMENT '工单ID',
+    ticket_no       VARCHAR(32)  NOT NULL COMMENT '工单编号快照',
+    event_type      VARCHAR(32)  NOT NULL COMMENT '事件类型：CREATE/ACCEPT/ASSIGN/RESOLVE/REJECT',
+    operator_id     BIGINT       NOT NULL COMMENT '操作人ID',
+    operator_name   VARCHAR(64)  NOT NULL COMMENT '操作人名称快照',
+    from_status     VARCHAR(32)  DEFAULT NULL COMMENT '变更前状态',
+    to_status       VARCHAR(32)  DEFAULT NULL COMMENT '变更后状态',
+    remark          VARCHAR(500) DEFAULT NULL COMMENT '操作说明',
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    KEY idx_wf_ticket_event_ticket_id_created_at (ticket_id, created_at),
+    KEY idx_wf_ticket_event_operator_id (operator_id),
+    KEY idx_wf_ticket_event_event_type (event_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工单操作流水表';
+
 
 CREATE TABLE IF NOT EXISTS wf_ticket (
     id                BIGINT PRIMARY KEY COMMENT '工单ID',
@@ -51,3 +71,27 @@ CREATE TABLE IF NOT EXISTS wf_ticket (
     KEY idx_wf_ticket_source (source),
     KEY idx_wf_ticket_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工单主表';
+
+
+CREATE TABLE IF NOT EXISTS search_sync_task (
+    id BIGINT NOT NULL PRIMARY KEY COMMENT '主键ID',
+
+    biz_type VARCHAR(32) NOT NULL COMMENT '业务类型，如 TICKET',
+    biz_id BIGINT NOT NULL COMMENT '业务ID',
+    operation VARCHAR(32) NOT NULL COMMENT '操作类型，如 UPSERT、DELETE',
+    dedupe_key VARCHAR(128) NOT NULL COMMENT '去重键，如 TICKET:2001:UPSERT',
+
+    status VARCHAR(32) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING、RUNNING、RETRYING、SUCCESS、FAILED',
+    retry_count INT NOT NULL DEFAULT 0 COMMENT '已重试次数',
+    max_retry INT NOT NULL DEFAULT 5 COMMENT '最大重试次数',
+    next_retry_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '下次可重试时间',
+
+    last_error VARCHAR(1000) NULL COMMENT '最近一次失败原因',
+    locked_at DATETIME NULL COMMENT '任务开始执行时间',
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    UNIQUE KEY uk_search_sync_dedupe (dedupe_key),
+    KEY idx_search_sync_poll (status, next_retry_at, retry_count)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='搜索索引同步任务表';

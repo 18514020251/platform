@@ -49,6 +49,9 @@ sa-token:
   token-style: uuid
 
 platform:
+  internal:
+    token: ${PLATFORM_INTERNAL_TOKEN:platform-internal-dev-token}
+
   redis:
     health-check:
       enabled: true

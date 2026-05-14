@@ -14,10 +14,7 @@ import com.xcvk.platform.workflow.model.dto.CreateTicketRequest;
 import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
 import com.xcvk.platform.workflow.model.query.MyTicketQuery;
 import com.xcvk.platform.workflow.model.query.TicketManageQuery;
-import com.xcvk.platform.workflow.model.vo.CreateTicketResponse;
-import com.xcvk.platform.workflow.model.vo.TicketDetailVO;
-import com.xcvk.platform.workflow.model.vo.TicketListItemVO;
-import com.xcvk.platform.workflow.model.vo.TicketManageListItemVO;
+import com.xcvk.platform.workflow.model.vo.*;
 import com.xcvk.platform.workflow.search.service.TicketSearchService;
 import com.xcvk.platform.workflow.service.TicketService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +23,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 工单控制器
@@ -207,7 +206,7 @@ public class TicketController {
     @Operation(summary = "工单分配", description = "管理员分配工单")
     public Result<Void> assignTicket(
             @PathVariable("ticketId") Long ticketId,
-            @RequestBody AssignTicketRequest request
+            @Valid @RequestBody AssignTicketRequest request
     ) {
         ticketService.assignTicket(saTokenSessionUtils.getCurrentLoginIdentity(), ticketId, request);
         return Result.successVoid();
@@ -224,5 +223,44 @@ public class TicketController {
     public Result<PageResult<TicketManageListItemVO>> searchManageTickets(@ModelAttribute TicketManageQuery query) {
         CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
         return Result.success(ticketSearchService.searchManageTickets(identity, query));
+    }
+
+    /**
+     * 处理侧工单详情。
+     *
+     * <p>该接口面向支持人员与管理员使用，
+     * 管理员可以查看全部工单，支持人员只能查看未分派工单或自己处理中的工单。</p>
+     *
+     * @param ticketId 工单ID
+     * @return 工单详情
+     */
+    @GetMapping("/{ticketId}")
+    @SaCheckLogin
+    @SaCheckRole(
+            value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT},
+            mode = SaMode.OR
+    )
+    @AccessLog(value = "查询处理侧工单详情", recordArgs = false, recordResult = false)
+    @Operation(summary = "处理侧工单详情", description = "支持人员或管理员查询处理侧工单详情")
+    public Result<TicketDetailVO> getManageTicketDetail(@PathVariable("ticketId") Long ticketId) {
+        CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
+        return Result.success(ticketService.getManageTicketDetail(identity, ticketId));
+    }
+
+    /**
+     * 查询工单操作流水
+     *
+     * <p>用于查看指定工单的关键流转记录。</p>
+     *
+     * @param ticketId 工单ID
+     * @return 操作流水列表
+     */
+    @GetMapping("/{ticketId}/events")
+    @SaCheckLogin
+    @AccessLog(value = "查询工单操作流水", recordArgs = false, recordResult = false)
+    @Operation(summary = "查询工单操作流水", description = "查询指定工单的创建、接单、派单、处理结果等关键操作记录")
+    public Result<List<TicketEventVO>> listTicketEvents(@PathVariable("ticketId") Long ticketId) {
+        CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
+        return Result.success(ticketService.listTicketEvents(identity, ticketId));
     }
 }

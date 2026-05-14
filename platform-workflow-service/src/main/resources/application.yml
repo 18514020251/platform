@@ -48,8 +48,18 @@ sa-token:
   token-style: uuid
 
 platform:
+  remote:
+    auth-base-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    knowledge-base-url: ${KNOWLEDGE_SERVICE_URL:http://localhost:8083}
+    workflow-base-url: ${WORKFLOW_SERVICE_URL:http://localhost:8082}
+    ai-base-url: ${AI_SERVICE_URL:http://localhost:8084}
+  search-sync:
+    batch-size: 20
+    fixed-delay-ms: 5000
+
+
   internal:
-    token: ${PLATFORM_INTERNAL_TOKEN}
+    token: ${PLATFORM_INTERNAL_TOKEN:platform-internal-dev-token}
 
   access-log:
     enabled: true

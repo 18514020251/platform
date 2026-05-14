@@ -1,5 +1,6 @@
 package com.xcvk.platform.auth.service;
 
+import com.xcvk.platform.api.contract.auth.model.InternalUserInfoResponse;
 import com.xcvk.platform.auth.model.dto.LoginRequest;
 import com.xcvk.platform.auth.model.vo.CurrentUserInfo;
 import com.xcvk.platform.auth.model.vo.LoginResponse;
@@ -44,4 +45,14 @@ public interface AuthService {
      * @throws com.xcvk.platform.common.exception.BusinessException 未登录或用户状态异常时抛出
      */
     CurrentUserInfo getCurrentUser();
+
+    /**
+     * 内部查询用户信息。
+     *
+     * <p>供其他服务通过内部接口查询用户基础信息和角色编码。</p>
+     *
+     * @param userId 用户ID
+     * @return 内部用户信息
+     */
+    InternalUserInfoResponse getInternalUserInfo(Long userId);
 }

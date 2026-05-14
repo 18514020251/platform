@@ -96,5 +96,9 @@
             <scope>compile</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.xcvk.platform</groupId>
+            <artifactId>platform-api-contract</artifactId>
+        </dependency>
     </dependencies>
 </project>

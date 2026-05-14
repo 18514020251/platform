@@ -8,10 +8,9 @@ import com.xcvk.platform.workflow.model.dto.AssignTicketRequest;
 import com.xcvk.platform.workflow.model.dto.UpdateTicketStatusRequest;
 import com.xcvk.platform.workflow.model.query.MyTicketQuery;
 import com.xcvk.platform.workflow.model.query.TicketManageQuery;
-import com.xcvk.platform.workflow.model.vo.CreateTicketResponse;
-import com.xcvk.platform.workflow.model.vo.TicketDetailVO;
-import com.xcvk.platform.workflow.model.vo.TicketListItemVO;
-import com.xcvk.platform.workflow.model.vo.TicketManageListItemVO;
+import com.xcvk.platform.workflow.model.vo.*;
+
+import java.util.List;
 
 /**
  * 工单服务接口
@@ -66,6 +65,18 @@ public interface TicketService {
      * @return 工单详情
      */
     TicketDetailVO getMyTicketDetail(CurrentLoginIdentity identity, Long ticketId);
+
+    /**
+     * 查询处理侧工单详情。
+     *
+     * <p>管理员可以查看所有工单；
+     * 支持人员只能查看未分派工单或自己正在处理的工单。</p>
+     *
+     * @param identity 当前登录身份
+     * @param ticketId 工单ID
+     * @return 工单详情
+     */
+    TicketDetailVO getManageTicketDetail(CurrentLoginIdentity identity, Long ticketId);
 
     /**
      * 分页查询处理侧工单列表
@@ -145,4 +156,24 @@ public interface TicketService {
      * @return 工单列表
      */
     QueryAiTicketResponse queryTicketByAi(QueryAiTicketRequest request);
+
+    /**
+     * 查询工单操作流水。
+     *
+     * @param identity 当前登录身份
+     * @param ticketId 工单ID
+     * @return 操作流水列表
+     */
+    List<TicketEventVO> listTicketEvents(CurrentLoginIdentity identity, Long ticketId);
+
+    /**
+     * 同步工单到搜索索引。
+     *
+     * <p>该方法由搜索同步任务处理器调用，失败时应抛出异常，
+     * 由任务处理器负责重试和状态记录。</p>
+     *
+     * @param ticketId 工单ID
+     */
+    void syncTicketToSearchIndex(Long ticketId);
+
 }

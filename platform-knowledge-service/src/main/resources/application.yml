@@ -52,7 +52,7 @@ platform:
     ai-base-url: ${AI_SERVICE_URL:http://localhost:8084}
 
   internal:
-    token: ${PLATFORM_INTERNAL_TOKEN}
+    token: ${PLATFORM_INTERNAL_TOKEN:platform-internal-dev-token}
 
   access-log:
     enabled: true
