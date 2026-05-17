@@ -17,6 +17,8 @@ import com.xcvk.platform.ai.service.eval.RagEvalMetricCalculator;
 import com.xcvk.platform.ai.service.rag.RagContextRetrievalService;
 import com.xcvk.platform.ai.service.rag.RagPromptBuilder;
 import com.xcvk.platform.ai.service.rag.RagQuestionRewriteService;
+import com.xcvk.platform.api.contract.knowledge.client.KnowledgeDocumentChunkClient;
+import com.xcvk.platform.api.contract.knowledge.model.KnowledgeDocumentChunkItem;
 import com.xcvk.platform.api.contract.knowledge.model.KnowledgeRagContextItem;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
@@ -68,22 +70,28 @@ public class RagEvalServiceImpl implements RagEvalService {
 
     private final SnowflakeIdGenerator idGenerator;
 
+    private final KnowledgeDocumentChunkClient knowledgeDocumentChunkClient;
+
     @Override
     public RagEvalDatasetVO createDataset(RagEvalDatasetCreateRequest request) {
         validateCreateDatasetRequest(request);
 
+        List<Long> expectedChunkIds = resolveExpectedChunkIds(request);
+
         RagEvalDataset dataset = new RagEvalDataset()
                 .setId(idGenerator.nextId())
                 .setQuestion(request.question().trim())
-                .setExpectedChunkIds(joinIds(request.expectedChunkIds()))
+                .setExpectedChunkIds(joinIds(expectedChunkIds))
                 .setExpectedAnswer(safeTrim(request.expectedAnswer()))
                 .setCategoryId(request.categoryId())
                 .setDifficulty(resolveDifficulty(request.difficulty()));
 
         datasetMapper.insert(dataset);
 
-        return RagEvalDatasetVO.from(dataset, request.expectedChunkIds());
+        return RagEvalDatasetVO.from(dataset, expectedChunkIds);
     }
+
+
 
     @Override
     public List<RagEvalDatasetVO> listDatasets(Long categoryId, Integer limit) {
@@ -231,6 +239,47 @@ public class RagEvalServiceImpl implements RagEvalService {
                 .setRelevanceScore(relevanceScore)
                 .setRetrieveLatencyMs(retrieveLatencyMs)
                 .setAnswerLatencyMs(answerLatencyMs);
+    }
+
+    private List<Long> resolveExpectedChunkIds(RagEvalDatasetCreateRequest request) {
+        if (!CollectionUtils.isEmpty(request.expectedChunkIds())) {
+            return request.expectedChunkIds()
+                    .stream()
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+        }
+
+        Long documentId = request.documentId();
+        BizAssert.notNull(documentId, ErrorCode.PARAM_INVALID, "文档ID不能为空");
+
+        List<KnowledgeDocumentChunkItem> chunks = knowledgeDocumentChunkClient.listDocumentChunks(documentId);
+
+        BizAssert.isTrue(
+                !CollectionUtils.isEmpty(chunks),
+                ErrorCode.BIZ_ERROR,
+                "当前文档没有生成切片，无法自动构建 expectedChunkIds"
+        );
+
+        List<Long> chunkIds = chunks.stream()
+                .map(KnowledgeDocumentChunkItem::id)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        BizAssert.isTrue(
+                !chunkIds.isEmpty(),
+                ErrorCode.BIZ_ERROR,
+                "当前文档切片ID为空，无法自动构建 expectedChunkIds"
+        );
+
+        log.info("RAG评测样本自动获取chunkId成功，documentId={}, chunkCount={}, chunkIds={}",
+                documentId,
+                chunkIds.size(),
+                chunkIds
+        );
+
+        return chunkIds;
     }
 
     private RagEvalRun buildRunSummary(Long runId, List<RagEvalCaseResult> caseResults, RagEvalRunRequest request) {
@@ -383,7 +432,15 @@ public class RagEvalServiceImpl implements RagEvalService {
     private void validateCreateDatasetRequest(RagEvalDatasetCreateRequest request) {
         BizAssert.notNull(request, ErrorCode.PARAM_INVALID, "评测样本不能为空");
         BizAssert.hasText(request.question(), ErrorCode.PARAM_INVALID, "问题不能为空");
-        BizAssert.isTrue(!CollectionUtils.isEmpty(request.expectedChunkIds()), ErrorCode.PARAM_INVALID, "标准chunk不能为空");
+
+        boolean hasManualChunkIds = !CollectionUtils.isEmpty(request.expectedChunkIds());
+        boolean hasDocumentId = request.documentId() != null;
+
+        BizAssert.isTrue(
+                hasManualChunkIds || hasDocumentId,
+                ErrorCode.PARAM_INVALID,
+                "标准chunk不能为空；请手动传 expectedChunkIds，或传 documentId 自动获取切片ID"
+        );
     }
 
     /**
