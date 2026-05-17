@@ -1,5 +1,6 @@
 package com.xcvk.platform.ai.model.dto;
 
+import com.xcvk.platform.api.contract.knowledge.model.RetrievalMode;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
@@ -23,7 +24,9 @@ public record RagEvalRunRequest(
 
         Boolean generationEnabled,
 
-        Boolean judgeEnabled
+        Boolean judgeEnabled,
+
+        RetrievalMode retrievalMode
 
 ) implements Serializable {
 
@@ -58,5 +61,9 @@ public record RagEvalRunRequest(
 
     public boolean safeJudgeEnabled() {
         return Boolean.TRUE.equals(judgeEnabled);
+    }
+
+    public RetrievalMode safeRetrievalMode() {
+        return retrievalMode == null ? RetrievalMode.ENHANCED_RRF : retrievalMode;
     }
 }

@@ -17,6 +17,8 @@ public record RagEvalRunVO(
 
         Integer retrieveTopK,
 
+        String retrievalMode,
+
         Long categoryId,
 
         Boolean generationEnabled,
@@ -53,6 +55,7 @@ public record RagEvalRunVO(
                 run.getId(),
                 run.getDatasetSize(),
                 run.getRetrieveTopK(),
+                run.getRetrievalMode(),
                 run.getCategoryId(),
                 run.getGenerationEnabled(),
                 run.getJudgeEnabled(),

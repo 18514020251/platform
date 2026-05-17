@@ -4,6 +4,7 @@ import com.xcvk.platform.ai.model.vo.RagCitation;
 import com.xcvk.platform.api.contract.knowledge.client.KnowledgeRagContextClient;
 import com.xcvk.platform.api.contract.knowledge.model.KnowledgeRagContextItem;
 import com.xcvk.platform.api.contract.knowledge.model.KnowledgeRagContextRequest;
+import com.xcvk.platform.api.contract.knowledge.model.RetrievalMode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,7 +47,8 @@ public class RagContextRetrievalService {
         List<KnowledgeRagContextItem> originalContexts = retrieveContextsByQuestion(
                 originalQuestion,
                 RETRIEVE_STAGE_TOPK,
-                categoryId
+                categoryId,
+                RetrievalMode.HYBRID_RRF
         );
 
         if (!StringUtils.hasText(rewrittenQuestion)
@@ -57,7 +59,8 @@ public class RagContextRetrievalService {
         List<KnowledgeRagContextItem> rewrittenContexts = retrieveContextsByQuestion(
                 rewrittenQuestion,
                 RETRIEVE_STAGE_TOPK,
-                categoryId
+                categoryId,
+                RetrievalMode.HYBRID_RRF
         );
 
         List<KnowledgeRagContextItem> contexts = mergeAndRerank(
@@ -84,28 +87,37 @@ public class RagContextRetrievalService {
                 .toList();
     }
 
-    private List<KnowledgeRagContextItem> retrieveContextsByQuestion(String question,
-                                                                     Integer topK,
-                                                                     Long categoryId) {
-        if (!StringUtils.hasText(question)) {
-            return List.of();
-        }
-
+    private List<KnowledgeRagContextItem> retrieveContextsByQuestion(
+            String question,
+            Integer topK,
+            Long categoryId,
+            RetrievalMode mode
+    ) {
         KnowledgeRagContextRequest contextRequest = new KnowledgeRagContextRequest(
                 question,
                 topK,
-                categoryId
+                categoryId,
+                mode
         );
 
-        try {
-            List<KnowledgeRagContextItem> contexts =
-                    knowledgeRagContextClient.retrieveContexts(contextRequest);
+        return knowledgeRagContextClient.retrieveContexts(contextRequest);
+    }
 
-            return contexts == null ? List.of() : contexts;
-        } catch (Exception e) {
-            log.warn("RAG知识片段检索失败，question={}, categoryId={}", question, categoryId, e);
-            return List.of();
+    /**
+     * 双路召回。
+     */
+    public List<KnowledgeRagContextItem> retrieveContextsByMode(
+            String originalQuestion,
+            String rewrittenQuestion,
+            int finalTopK,
+            Long categoryId,
+            RetrievalMode mode
+    ) {
+        if (mode == RetrievalMode.ENHANCED_RRF) {
+            return retrieveEnhancedContexts(originalQuestion, rewrittenQuestion, finalTopK, categoryId);
         }
+
+        return retrieveContextsByQuestion(originalQuestion, finalTopK, categoryId, mode);
     }
 
     /**

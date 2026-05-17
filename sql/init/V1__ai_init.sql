@@ -112,3 +112,6 @@ CREATE TABLE IF NOT EXISTS rag_eval_case_result
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci
     COMMENT = 'RAG离线评测样本结果表';
+
+ALTER TABLE rag_eval_run
+    ADD COLUMN retrieval_mode varchar(32) DEFAULT 'ENHANCED_RRF' COMMENT '检索策略';

@@ -1,12 +1,20 @@
 package com.xcvk.platform.knowledge.service.impl;
 
+import com.xcvk.platform.common.domain.PageResult;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
+import com.xcvk.platform.knowledge.constant.KnowledgeChunkStatusConstants;
 import com.xcvk.platform.knowledge.constant.KnowledgeErrorMessages;
 import com.xcvk.platform.knowledge.model.dto.KnowledgeChunkHybridSearchRequest;
+import com.xcvk.platform.knowledge.model.dto.KnowledgeChunkVectorSearchRequest;
+import com.xcvk.platform.knowledge.model.query.KnowledgeChunkSearchQuery;
 import com.xcvk.platform.knowledge.model.vo.KnowledgeChunkHybridSearchItemVO;
+import com.xcvk.platform.knowledge.model.vo.KnowledgeChunkSearchItemVO;
+import com.xcvk.platform.knowledge.model.vo.KnowledgeChunkVectorSearchItemVO;
 import com.xcvk.platform.knowledge.model.vo.KnowledgeRagContextItemVO;
 import com.xcvk.platform.knowledge.search.service.KnowledgeChunkHybridSearchService;
+import com.xcvk.platform.knowledge.search.service.KnowledgeChunkSearchService;
+import com.xcvk.platform.knowledge.search.service.KnowledgeChunkVectorSearchService;
 import com.xcvk.platform.knowledge.service.KnowledgeRagContextService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -37,6 +45,10 @@ public class KnowledgeRagContextServiceImpl implements KnowledgeRagContextServic
 
     private final KnowledgeChunkHybridSearchService knowledgeChunkHybridSearchService;
 
+    private final KnowledgeChunkSearchService knowledgeChunkSearchService;
+
+    private final KnowledgeChunkVectorSearchService knowledgeChunkVectorSearchService;
+
     /**
      * 召回 RAG 知识上下文。
      *
@@ -53,6 +65,72 @@ public class KnowledgeRagContextServiceImpl implements KnowledgeRagContextServic
         return hybridResults.stream()
                 .map(this::toRagContextItemVO)
                 .toList();
+    }
+
+    @Override
+    public List<KnowledgeRagContextItemVO> retrieveTextContexts(KnowledgeChunkHybridSearchRequest request) {
+        validateRequest(request);
+
+        KnowledgeChunkSearchQuery query = new KnowledgeChunkSearchQuery(
+                request.question(),
+                null,
+                request.categoryId(),
+                KnowledgeChunkStatusConstants.ACTIVE,
+                1,
+                request.safeTopK()
+        );
+
+        PageResult<KnowledgeChunkSearchItemVO> pageResult = knowledgeChunkSearchService.searchChunks(query);
+        if (pageResult == null || pageResult.getRecords() == null) {
+            return List.of();
+        }
+
+        return pageResult.getRecords()
+                .stream()
+                .map(this::toRagContextItemVO)
+                .toList();
+    }
+
+    @Override
+    public List<KnowledgeRagContextItemVO> retrieveVectorContexts(KnowledgeChunkHybridSearchRequest request) {
+        validateRequest(request);
+
+        KnowledgeChunkVectorSearchRequest vectorRequest = new KnowledgeChunkVectorSearchRequest(
+                request.question(),
+                request.safeTopK(),
+                request.categoryId()
+        );
+
+        return knowledgeChunkVectorSearchService.vectorSearch(vectorRequest)
+                .stream()
+                .map(this::toRagContextItemVO)
+                .toList();
+    }
+
+    private KnowledgeRagContextItemVO toRagContextItemVO(KnowledgeChunkSearchItemVO item) {
+        return new KnowledgeRagContextItemVO(
+                item.chunkId(),
+                item.documentId(),
+                item.chunkNo(),
+                item.documentTitle(),
+                item.categoryName(),
+                cleanHighlightTags(item.chunkText()),
+                null,
+                "TEXT"
+        );
+    }
+
+    private KnowledgeRagContextItemVO toRagContextItemVO(KnowledgeChunkVectorSearchItemVO item) {
+        return new KnowledgeRagContextItemVO(
+                item.chunkId(),
+                item.documentId(),
+                item.chunkNo(),
+                item.documentTitle(),
+                item.categoryName(),
+                cleanHighlightTags(item.chunkText()),
+                item.score(),
+                "VECTOR"
+        );
     }
 
     /**

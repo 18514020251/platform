@@ -23,4 +23,20 @@ public interface KnowledgeRagContextService {
      * @return 干净的知识上下文片段列表
      */
     List<KnowledgeRagContextItemVO> retrieveContexts(KnowledgeChunkHybridSearchRequest request);
+
+    /**
+     * 召回纯文本知识上下文。
+     *
+     * @param request 混合检索请求
+     * @return 干净的知识上下文片段列表
+     */
+    List<KnowledgeRagContextItemVO> retrieveTextContexts(KnowledgeChunkHybridSearchRequest request);
+
+    /**
+     * 召回向量知识上下文。
+     *
+     * @param request 混合检索请求
+     * @return 干净的知识上下文片段列表
+     */
+    List<KnowledgeRagContextItemVO> retrieveVectorContexts(KnowledgeChunkHybridSearchRequest request);
 }

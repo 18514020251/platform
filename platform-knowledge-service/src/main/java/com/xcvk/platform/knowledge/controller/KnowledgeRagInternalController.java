@@ -2,6 +2,7 @@ package com.xcvk.platform.knowledge.controller;
 
 import com.xcvk.platform.api.contract.knowledge.model.KnowledgeRagContextItem;
 import com.xcvk.platform.api.contract.knowledge.model.KnowledgeRagContextRequest;
+import com.xcvk.platform.api.contract.knowledge.model.RetrievalMode;
 import com.xcvk.platform.knowledge.model.dto.KnowledgeChunkHybridSearchRequest;
 import com.xcvk.platform.knowledge.model.vo.KnowledgeRagContextItemVO;
 import com.xcvk.platform.knowledge.service.KnowledgeRagContextService;
@@ -36,14 +37,23 @@ public class KnowledgeRagInternalController {
      */
     @PostMapping("/contexts")
     public List<KnowledgeRagContextItem> retrieveContexts(@RequestBody KnowledgeRagContextRequest request) {
+        RetrievalMode mode = request.retrievalMode() == null
+                ? RetrievalMode.HYBRID_RRF
+                : request.retrievalMode();
+
         KnowledgeChunkHybridSearchRequest searchRequest = new KnowledgeChunkHybridSearchRequest(
                 request.question(),
                 request.topK(),
                 request.categoryId()
         );
 
-        return knowledgeRagContextService.retrieveContexts(searchRequest)
-                .stream()
+        List<KnowledgeRagContextItemVO> contexts = switch (mode) {
+            case KEYWORD -> knowledgeRagContextService.retrieveTextContexts(searchRequest);
+            case VECTOR -> knowledgeRagContextService.retrieveVectorContexts(searchRequest);
+            case HYBRID_RRF, ENHANCED_RRF -> knowledgeRagContextService.retrieveContexts(searchRequest);
+        };
+
+        return contexts.stream()
                 .map(this::toContractItem)
                 .toList();
     }

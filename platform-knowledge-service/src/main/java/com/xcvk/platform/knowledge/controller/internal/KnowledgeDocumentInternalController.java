@@ -12,11 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * 知识文档内部接口。
- *
- * <p>供 ai-service 等内部服务调用，不直接面向前端。</p>
- */
 @RestController
 @RequestMapping("/internal/documents")
 @RequiredArgsConstructor
@@ -24,15 +19,15 @@ public class KnowledgeDocumentInternalController {
 
     private final KnowledgeDocumentChunkService knowledgeDocumentChunkService;
 
-    /**
-     * 查询指定知识文档的切片列表。
-     *
-     * @param documentId 知识文档 ID
-     * @return 文档切片列表
-     */
     @GetMapping("/{documentId}/chunks")
-    public List<KnowledgeDocumentChunkItem> listDocumentChunks(@PathVariable("documentId") Long documentId) {
-        BizAssert.notNull(documentId, ErrorCode.PARAM_INVALID, KnowledgeErrorMessages.DOCUMENT_ID_REQUIRED);
+    public List<KnowledgeDocumentChunkItem> listDocumentChunks(
+            @PathVariable("documentId") Long documentId
+    ) {
+        BizAssert.notNull(
+                documentId,
+                ErrorCode.PARAM_INVALID,
+                KnowledgeErrorMessages.DOCUMENT_ID_REQUIRED
+        );
 
         return knowledgeDocumentChunkService.list(
                         new LambdaQueryWrapper<KnowledgeDocumentChunk>()

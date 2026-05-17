@@ -20,6 +20,7 @@ import com.xcvk.platform.ai.service.rag.RagQuestionRewriteService;
 import com.xcvk.platform.api.contract.knowledge.client.KnowledgeDocumentChunkClient;
 import com.xcvk.platform.api.contract.knowledge.model.KnowledgeDocumentChunkItem;
 import com.xcvk.platform.api.contract.knowledge.model.KnowledgeRagContextItem;
+import com.xcvk.platform.common.exception.BusinessException;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
 import com.xcvk.platform.id.generator.SnowflakeIdGenerator;
@@ -86,6 +87,7 @@ public class RagEvalServiceImpl implements RagEvalService {
                 .setCategoryId(request.categoryId())
                 .setDifficulty(resolveDifficulty(request.difficulty()));
 
+
         datasetMapper.insert(dataset);
 
         return RagEvalDatasetVO.from(dataset, expectedChunkIds);
@@ -110,7 +112,7 @@ public class RagEvalServiceImpl implements RagEvalService {
     @Transactional(rollbackFor = Exception.class)
     public RagEvalRunVO runEvaluation(RagEvalRunRequest request) {
         RagEvalRunRequest safeRequest = request == null
-                ? new RagEvalRunRequest(null, null, null, null, null)
+                ? new RagEvalRunRequest(null,null, null, null, null, null)
                 : request;
 
         List<RagEvalDataset> datasets = loadDatasets(safeRequest);
@@ -187,11 +189,12 @@ public class RagEvalServiceImpl implements RagEvalService {
         int retrieveTopK = request.safeRetrieveTopK();
 
         long retrieveStart = System.nanoTime();
-        List<KnowledgeRagContextItem> contexts = contextRetrievalService.retrieveEnhancedContexts(
+        List<KnowledgeRagContextItem> contexts = contextRetrievalService.retrieveContextsByMode(
                 originalQuestion,
                 rewrittenQuestion,
                 retrieveTopK,
-                resolveCaseCategoryId(dataset, request)
+                resolveCaseCategoryId(dataset, request),
+                request.safeRetrievalMode()
         );
         long retrieveLatencyMs = elapsedMillis(retrieveStart);
 
@@ -253,7 +256,14 @@ public class RagEvalServiceImpl implements RagEvalService {
         Long documentId = request.documentId();
         BizAssert.notNull(documentId, ErrorCode.PARAM_INVALID, "文档ID不能为空");
 
-        List<KnowledgeDocumentChunkItem> chunks = knowledgeDocumentChunkClient.listDocumentChunks(documentId);
+        List<KnowledgeDocumentChunkItem> chunks;
+
+        try {
+            chunks = knowledgeDocumentChunkClient.listDocumentChunks(documentId);
+        } catch (Exception e) {
+            log.warn("获取文档切片失败，documentId={}", documentId, e);
+            throw new BusinessException(ErrorCode.BIZ_ERROR, "获取文档切片失败，请检查 knowledge-service 内部接口是否已注册");
+        }
 
         BizAssert.isTrue(
                 !CollectionUtils.isEmpty(chunks),
@@ -271,12 +281,6 @@ public class RagEvalServiceImpl implements RagEvalService {
                 !chunkIds.isEmpty(),
                 ErrorCode.BIZ_ERROR,
                 "当前文档切片ID为空，无法自动构建 expectedChunkIds"
-        );
-
-        log.info("RAG评测样本自动获取chunkId成功，documentId={}, chunkCount={}, chunkIds={}",
-                documentId,
-                chunkIds.size(),
-                chunkIds
         );
 
         return chunkIds;
@@ -324,7 +328,8 @@ public class RagEvalServiceImpl implements RagEvalService {
                 .setAvgFaithfulnessScore(roundNullable(avgFaithfulnessScore))
                 .setAvgRelevanceScore(roundNullable(avgRelevanceScore))
                 .setAvgRetrieveLatencyMs(round4(avgRetrieveLatencyMs))
-                .setAvgAnswerLatencyMs(round4(avgAnswerLatencyMs));
+                .setAvgAnswerLatencyMs(round4(avgAnswerLatencyMs))
+                .setRetrievalMode(request.safeRetrievalMode().name());
     }
 
     private String generateAnswerSafely(String originalQuestion,

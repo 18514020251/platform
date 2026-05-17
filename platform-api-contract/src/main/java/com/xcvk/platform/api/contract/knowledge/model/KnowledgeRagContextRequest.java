@@ -27,8 +27,12 @@ public record KnowledgeRagContextRequest(
         /**
          * 分类ID
          */
-        Long categoryId
+        Long categoryId,
 
+        /**
+         * 召回模式
+         */
+        RetrievalMode retrievalMode
 ) implements Serializable {
 
     @Serial

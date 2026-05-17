@@ -56,6 +56,8 @@ public class RagEvalRun implements Serializable {
 
     private Double avgAnswerLatencyMs;
 
+    private String retrievalMode;
+
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
 }
