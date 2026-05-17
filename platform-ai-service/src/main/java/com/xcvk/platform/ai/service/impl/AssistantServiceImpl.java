@@ -17,6 +17,7 @@ import com.xcvk.platform.ai.support.AssistantIntentClassifier;
 import com.xcvk.platform.ai.support.AssistantTicketScopeValidator;
 import com.xcvk.platform.ai.tool.CreateTicketTool;
 import com.xcvk.platform.ai.tool.QueryTicketTool;
+import com.xcvk.platform.ai.trace.context.RagTraceHolder;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
@@ -114,11 +115,16 @@ public class AssistantServiceImpl implements AssistantService {
     private AssistantChatResponse handleKnowledgeQa(AssistantChatRequest request,
                                                     AiAgentExecutionLog executionLog) {
 
-        RagChatResponse ragResponse = ragChatService.chat(new RagChatRequest(
-                request.question(),
-                request.safeTopK(),
-                request.categoryId()
-        ));
+
+        RagChatResponse ragResponse =
+                ragChatService.chat(
+                        new RagChatRequest(
+                                request.question(),
+                                request.safeTopK(),
+                                request.categoryId(),
+                                executionLog.getId()
+                        )
+                );
 
         logAssembler.markKnowledgeQaSuccess(executionLog);
 

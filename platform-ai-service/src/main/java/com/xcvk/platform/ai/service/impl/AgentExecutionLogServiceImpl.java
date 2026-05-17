@@ -1,13 +1,19 @@
 package com.xcvk.platform.ai.service.impl;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xcvk.platform.ai.model.entity.AiAgentExecutionLog;
+import com.xcvk.platform.ai.model.request.assistant.AssistantHistoryQueryRequest;
+import com.xcvk.platform.ai.model.vo.assistant.AssistantHistoryItemVO;
 import com.xcvk.platform.ai.repository.mapper.AiAgentExecutionLogMapper;
 import com.xcvk.platform.ai.service.AgentExecutionLogService;
+import com.xcvk.platform.common.domain.PageResult;
 import com.xcvk.platform.id.generator.SnowflakeIdGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * Agent 执行日志服务实现。
@@ -45,5 +51,62 @@ public class AgentExecutionLogServiceImpl
                     ex
             );
         }
+    }
+
+    @Override
+    public PageResult<AssistantHistoryItemVO> queryHistory(
+            Long userId,
+            AssistantHistoryQueryRequest request
+    ) {
+
+        Page<AiAgentExecutionLog> page =
+                new Page<>(
+                        request.safePageNum(),
+                        request.safePageSize()
+                );
+
+        Page<AiAgentExecutionLog> result =
+                lambdaQuery()
+
+                        .eq(AiAgentExecutionLog::getUserId, userId)
+
+                        .orderByDesc(AiAgentExecutionLog::getCreatedAt)
+
+                        .page(page);
+
+        List<AssistantHistoryItemVO> records =
+                result.getRecords()
+                        .stream()
+                        .map(this::mapHistoryItem)
+                        .toList();
+
+        return PageResult.of(
+                records,
+                result.getTotal(),
+                result.getCurrent(),
+                result.getSize()
+        );
+    }
+
+    private AssistantHistoryItemVO mapHistoryItem(
+            AiAgentExecutionLog log
+    ) {
+
+        return new AssistantHistoryItemVO(
+
+                log.getId(),
+
+                log.getQuestion(),
+
+                log.getIntent(),
+
+                log.getExecutionStatus(),
+
+                log.getToolExecuted(),
+
+                log.getToolName(),
+
+                log.getCreatedAt()
+        );
     }
 }

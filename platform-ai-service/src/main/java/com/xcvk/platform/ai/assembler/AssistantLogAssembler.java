@@ -11,6 +11,7 @@ import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketRequest;
 import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketResponse;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.ai.support.AssistantIdentityResolver;
+import com.xcvk.platform.id.generator.SnowflakeIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -37,8 +38,15 @@ public class AssistantLogAssembler {
 
     private final AssistantIdentityResolver identityResolver;
 
-    public AiAgentExecutionLog buildBaseExecutionLog(CurrentLoginIdentity identity, AssistantChatRequest request) {
+    private final SnowflakeIdGenerator idGenerator;
+
+    public AiAgentExecutionLog buildBaseExecutionLog(
+            CurrentLoginIdentity identity,
+            AssistantChatRequest request
+    ) {
+
         return new AiAgentExecutionLog()
+                .setId(idGenerator.nextId())
                 .setUserId(identity.userId())
                 .setUsername(identityResolver.resolveCreatorName(identity))
                 .setQuestion(request.question())

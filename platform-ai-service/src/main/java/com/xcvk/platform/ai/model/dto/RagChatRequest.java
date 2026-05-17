@@ -36,7 +36,9 @@ public record RagChatRequest(
         /**
          * 分类ID
          */
-        Long categoryId
+        Long categoryId,
+
+        Long executionLogId
 
 ) implements Serializable {
 

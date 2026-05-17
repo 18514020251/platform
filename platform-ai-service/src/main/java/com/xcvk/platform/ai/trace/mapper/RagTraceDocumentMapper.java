@@ -62,6 +62,10 @@ public class RagTraceDocumentMapper {
                 LocalDateTime.now()
         );
 
+        document.setExecutionLogId(
+                context.getExecutionLogId()
+        );
+
         return document;
     }
 

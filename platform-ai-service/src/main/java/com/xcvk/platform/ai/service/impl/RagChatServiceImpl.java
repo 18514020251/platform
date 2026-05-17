@@ -90,6 +90,10 @@ public class RagChatServiceImpl implements RagChatService {
                     System.currentTimeMillis()
             );
 
+            traceContext.setExecutionLogId(
+                    request.executionLogId()
+            );
+
             RagTraceHolder.set(traceContext);
 
             RagTraceRecorder ragTraceRecorder = new RagTraceRecorder(traceContext);
@@ -184,6 +188,15 @@ public class RagChatServiceImpl implements RagChatService {
                             RagTraceNodeType.LLM_GENERATE,
                             () -> chatModel.chat(prompt)
                     );
+
+            // 注释部分代码仅用于测试异常情况链路追踪效果
+            //String answer =
+            //        ragTraceRecorder.executeNode(
+            //                RagTraceNodeType.LLM_GENERATE,
+            //                () -> {
+            //                    throw new RuntimeException("test llm error");
+            //                }
+            //        );
 
             traceContext.setStatus(SUCCESS);
 

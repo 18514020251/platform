@@ -11,4 +11,5 @@ import com.xcvk.platform.ai.model.entity.AiAgentExecutionLog;
  * @date 2026-05-09
  */
 public interface AiAgentExecutionLogMapper extends BaseMapper<AiAgentExecutionLog> {
+
 }

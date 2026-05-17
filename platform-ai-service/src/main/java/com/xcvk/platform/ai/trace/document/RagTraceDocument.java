@@ -18,6 +18,11 @@ public class RagTraceDocument {
     private String id;
 
     /**
+     * AI 对话记录ID
+     */
+    private Long executionLogId;
+
+    /**
      * trace id
      */
     private String traceId;

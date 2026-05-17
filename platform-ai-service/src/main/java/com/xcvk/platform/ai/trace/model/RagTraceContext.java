@@ -21,6 +21,11 @@ public class RagTraceContext {
     private String traceId;
 
     /**
+     * AI 对话记录ID
+     */
+    private Long executionLogId;
+
+    /**
      * 用户原问题
      */
     private String question;

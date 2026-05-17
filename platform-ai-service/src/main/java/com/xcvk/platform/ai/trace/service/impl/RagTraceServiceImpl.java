@@ -1,7 +1,9 @@
 package com.xcvk.platform.ai.trace.service.impl;
 
+import com.xcvk.platform.ai.model.vo.trace.RagTraceTimelineVO;
 import com.xcvk.platform.ai.trace.document.RagTraceDocument;
 import com.xcvk.platform.ai.trace.mapper.RagTraceDocumentMapper;
+import com.xcvk.platform.ai.trace.mapper.RagTraceTimelineMapper;
 import com.xcvk.platform.ai.trace.model.RagTraceContext;
 import com.xcvk.platform.ai.trace.repository.RagTraceRepository;
 import com.xcvk.platform.ai.trace.service.RagTraceService;
@@ -38,5 +40,17 @@ public class RagTraceServiceImpl
                     e
             );
         }
+    }
+
+    @Override
+    public RagTraceTimelineVO getTimeline(
+            Long executionLogId
+    ) {
+
+        RagTraceDocument document =
+                repository.findByExecutionLogId(executionLogId)
+                        .orElse(null);
+
+        return RagTraceTimelineMapper.toTimeline(document);
     }
 }

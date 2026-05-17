@@ -1,5 +1,6 @@
 package com.xcvk.platform.ai.trace.service;
 
+import com.xcvk.platform.ai.model.vo.trace.RagTraceTimelineVO;
 import com.xcvk.platform.ai.trace.model.RagTraceContext;
 
 /**
@@ -8,4 +9,8 @@ import com.xcvk.platform.ai.trace.model.RagTraceContext;
 public interface RagTraceService {
 
     void save(RagTraceContext context);
+
+    RagTraceTimelineVO getTimeline(
+            Long executionLogId
+    );
 }
