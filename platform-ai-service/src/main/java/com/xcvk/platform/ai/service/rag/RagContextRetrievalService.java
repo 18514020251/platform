@@ -38,40 +38,96 @@ public class RagContextRetrievalService {
     private final KnowledgeRagContextClient knowledgeRagContextClient;
 
     /**
-     * 双路增强召回。
+     * 双路增强召回
      */
-    public List<KnowledgeRagContextItem> retrieveEnhancedContexts(String originalQuestion,
-                                                                  String rewrittenQuestion,
-                                                                  int finalTopK,
-                                                                  Long categoryId) {
-        List<KnowledgeRagContextItem> originalContexts = retrieveContextsByQuestion(
+    public List<KnowledgeRagContextItem> retrieveEnhancedContexts(
+            String originalQuestion,
+            String rewrittenQuestion,
+            int finalTopK,
+            Long categoryId
+    ) {
+
+        // =========================
+        // Original Retrieval
+        // =========================
+
+        List<KnowledgeRagContextItem> originalContexts =
+                retrieveOriginalContexts(
+                        originalQuestion,
+                        categoryId
+                );
+
+        // =========================
+        // Rewrite Empty
+        // =========================
+
+        if (!StringUtils.hasText(rewrittenQuestion)
+                || safeText(originalQuestion)
+                .equals(safeText(rewrittenQuestion))) {
+
+            return mergeAndRerank(
+                    originalContexts,
+                    List.of(),
+                    finalTopK
+            );
+        }
+
+        // =========================
+        // Rewrite Retrieval
+        // =========================
+
+        List<KnowledgeRagContextItem> rewrittenContexts =
+                retrieveRewriteContexts(
+                        rewrittenQuestion,
+                        categoryId
+                );
+
+        // =========================
+        // Fusion
+        // =========================
+
+        List<KnowledgeRagContextItem> contexts =
+                mergeAndRerank(
+                        originalContexts,
+                        rewrittenContexts,
+                        finalTopK
+                );
+
+        logRetrievalResult(
                 originalQuestion,
+                rewrittenQuestion,
+                originalContexts,
+                rewrittenContexts,
+                contexts
+        );
+
+        return contexts;
+    }
+
+    public List<KnowledgeRagContextItem> retrieveOriginalContexts(
+            String question,
+            Long categoryId
+    ) {
+
+        return retrieveContextsByQuestion(
+                question,
                 RETRIEVE_STAGE_TOPK,
                 categoryId,
                 RetrievalMode.HYBRID_RRF
         );
+    }
 
-        if (!StringUtils.hasText(rewrittenQuestion)
-                || safeText(originalQuestion).equals(safeText(rewrittenQuestion))) {
-            return mergeAndRerank(originalContexts, List.of(), finalTopK);
-        }
+    public List<KnowledgeRagContextItem> retrieveRewriteContexts(
+            String rewrittenQuestion,
+            Long categoryId
+    ) {
 
-        List<KnowledgeRagContextItem> rewrittenContexts = retrieveContextsByQuestion(
+        return retrieveContextsByQuestion(
                 rewrittenQuestion,
                 RETRIEVE_STAGE_TOPK,
                 categoryId,
                 RetrievalMode.HYBRID_RRF
         );
-
-        List<KnowledgeRagContextItem> contexts = mergeAndRerank(
-                originalContexts,
-                rewrittenContexts,
-                finalTopK
-        );
-
-        logRetrievalResult(originalQuestion, rewrittenQuestion, originalContexts, rewrittenContexts, contexts);
-
-        return contexts;
     }
 
     /**
@@ -126,9 +182,9 @@ public class RagContextRetrievalService {
      * <p>这里 finalScore 使用查询层 RRF 分数。</p>
      * <p>知识库服务返回的原始 finalScore 只用于同分兜底排序。</p>
      */
-    private List<KnowledgeRagContextItem> mergeAndRerank(List<KnowledgeRagContextItem> originalContexts,
-                                                         List<KnowledgeRagContextItem> rewrittenContexts,
-                                                         int finalTopK) {
+    public List<KnowledgeRagContextItem> mergeAndRerank(List<KnowledgeRagContextItem> originalContexts,
+                                                        List<KnowledgeRagContextItem> rewrittenContexts,
+                                                        int finalTopK) {
         if (CollectionUtils.isEmpty(originalContexts) && CollectionUtils.isEmpty(rewrittenContexts)) {
             return List.of();
         }
