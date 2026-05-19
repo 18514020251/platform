@@ -70,6 +70,7 @@ public class AuthController {
      * @return 当前用户信息
      */
     @GetMapping("/me")
+    @SaCheckLogin
     @Operation(summary = "获取当前用户信息", description = "获取已登录用户的详细信息")
     @AccessLog(value = "获取当前用户信息", recordArgs = false, recordResult = false)
     public Result<CurrentUserInfo> me() {

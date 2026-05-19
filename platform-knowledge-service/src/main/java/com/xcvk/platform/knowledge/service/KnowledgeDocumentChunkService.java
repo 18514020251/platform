@@ -23,6 +23,15 @@ public interface KnowledgeDocumentChunkService extends IService<KnowledgeDocumen
     void rebuildDocumentChunks(KnowledgeDocument document);
 
     /**
+     * 上线知识文档切片。
+     *
+     * <p>用于知识文档重新上线后，将其对应切片统一恢复为可用状态。</p>
+     *
+     * @param document 知识文档实体
+     */
+    void onlineDocumentChunks(KnowledgeDocument document);
+
+    /**
      * 下线知识文档切片。
      *
      * <p>用于知识文档下线后，将其对应切片统一标记为下线。</p>

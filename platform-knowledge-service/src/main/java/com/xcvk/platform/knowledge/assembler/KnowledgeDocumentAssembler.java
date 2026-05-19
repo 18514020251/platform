@@ -7,6 +7,7 @@ import com.xcvk.platform.knowledge.model.cmd.CreateKnowledgeDocumentCmd;
 import com.xcvk.platform.knowledge.model.dto.CreateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.model.dto.UpdateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.model.entity.KnowledgeDocument;
+import com.xcvk.platform.knowledge.model.vo.KnowledgeDocumentDetailVO;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -67,4 +68,27 @@ public class KnowledgeDocumentAssembler {
                 .setTags(request.tags())
                 .setUpdatedAt(LocalDateTime.now());
     }
+
+    public KnowledgeDocumentDetailVO toDetailVO(KnowledgeDocument document) {
+        if (document == null) {
+            return null;
+        }
+
+        return new KnowledgeDocumentDetailVO(
+                document.getId(),
+                document.getTitle(),
+                document.getSummary(),
+                document.getContent(),
+                document.getCategoryId(),
+                document.getCategoryName(),
+                document.getTags(),
+                document.getStatus(),
+                document.getCreatorId(),
+                document.getCreatorName(),
+                document.getPublishedAt(),
+                document.getCreatedAt(),
+                document.getUpdatedAt()
+        );
+    }
+
 }

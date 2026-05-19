@@ -5,6 +5,7 @@ import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.knowledge.model.dto.CreateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.model.dto.UpdateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.model.entity.KnowledgeDocument;
+import com.xcvk.platform.knowledge.model.vo.KnowledgeDocumentDetailVO;
 
 /**
  * 知识文档服务接口
@@ -25,6 +26,14 @@ public interface KnowledgeDocumentService extends IService<KnowledgeDocument> {
     Long createDocument(CurrentLoginIdentity identity, CreateKnowledgeDocumentRequest request);
 
     /**
+     * 查询知识文档详情。
+     *
+     * @param documentId 知识文档ID
+     * @return 知识文档详情
+     */
+    KnowledgeDocumentDetailVO getDocumentDetail(Long documentId);
+
+    /**
      * 更新知识文档
      *
      * @param identity 当前登录用户信息
@@ -34,6 +43,14 @@ public interface KnowledgeDocumentService extends IService<KnowledgeDocument> {
     void updateDocument(CurrentLoginIdentity identity,
                         Long documentId,
                         UpdateKnowledgeDocumentRequest request);
+
+    /**
+     * 上线知识文档。
+     *
+     * @param identity 当前登录身份
+     * @param documentId 文档ID
+     */
+    void onlineDocument(CurrentLoginIdentity identity, Long documentId);
 
     /**
      * 下线知识文档。

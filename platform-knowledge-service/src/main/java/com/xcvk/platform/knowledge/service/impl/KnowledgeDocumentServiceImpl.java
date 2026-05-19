@@ -12,6 +12,7 @@ import com.xcvk.platform.knowledge.model.cmd.CreateKnowledgeDocumentCmd;
 import com.xcvk.platform.knowledge.model.dto.CreateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.model.dto.UpdateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.model.entity.KnowledgeDocument;
+import com.xcvk.platform.knowledge.model.vo.KnowledgeDocumentDetailVO;
 import com.xcvk.platform.knowledge.repository.mapper.KnowledgeDocumentMapper;
 import com.xcvk.platform.knowledge.search.assembler.KnowledgeSearchAssembler;
 import com.xcvk.platform.knowledge.search.repository.KnowledgeDocumentIndexRepository;
@@ -88,6 +89,22 @@ public class KnowledgeDocumentServiceImpl
     }
 
     /**
+     * 查询知识文档详情。
+     *
+     * @param documentId 知识文档ID
+     * @return 知识文档详情
+     */
+    @Override
+    public KnowledgeDocumentDetailVO getDocumentDetail(Long documentId) {
+        BizAssert.notNull(documentId, ErrorCode.PARAM_INVALID, KnowledgeErrorMessages.DOCUMENT_ID_REQUIRED);
+
+        KnowledgeDocument document = getById(documentId);
+        BizAssert.notNull(document, ErrorCode.BIZ_ERROR, KnowledgeErrorMessages.DOCUMENT_NOT_FOUND);
+
+        return knowledgeDocumentAssembler.toDetailVO(document);
+    }
+
+    /**
      * 更新知识文档。
      *
      * <p>当前阶段更新后默认发布，并同步写入 Elasticsearch，
@@ -116,6 +133,33 @@ public class KnowledgeDocumentServiceImpl
 
         KnowledgeDocument latestDocument = getById(documentId);
         knowledgeDocumentChunkService.rebuildDocumentChunks(latestDocument);
+
+        syncDocumentToSearchIndex(latestDocument);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void onlineDocument(CurrentLoginIdentity identity, Long documentId) {
+        validateCurrentLoginIdentity(identity);
+        BizAssert.notNull(documentId, ErrorCode.PARAM_INVALID, KnowledgeErrorMessages.DOCUMENT_ID_REQUIRED);
+
+        KnowledgeDocument document = getById(documentId);
+        BizAssert.notNull(document, ErrorCode.BIZ_ERROR, KnowledgeErrorMessages.DOCUMENT_NOT_FOUND);
+
+        LocalDateTime now = LocalDateTime.now();
+        KnowledgeDocument updateEntity = new KnowledgeDocument()
+                .setId(documentId)
+                .setStatus(KnowledgeDocumentStatusConstants.PUBLISHED)
+                .setPublishedAt(now)
+                .setUpdatedAt(now);
+
+        int rows = baseMapper.updateById(updateEntity);
+        DbAssert.affectedOne(rows, KnowledgeErrorMessages.ONLINE_DOCUMENT_FAILED);
+
+        KnowledgeDocument latestDocument = getById(documentId);
+        BizAssert.notNull(latestDocument, ErrorCode.BIZ_ERROR, KnowledgeErrorMessages.DOCUMENT_NOT_FOUND);
+
+        knowledgeDocumentChunkService.onlineDocumentChunks(latestDocument);
 
         syncDocumentToSearchIndex(latestDocument);
     }

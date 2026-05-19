@@ -95,6 +95,45 @@ public class KnowledgeDocumentChunkServiceImpl
         log.info("重建知识文档切片成功，documentId={}, chunkCount={}", document.getId(), chunks.size());
     }
 
+
+    /**
+     * 上线知识文档切片。
+     *
+     * <p>文档重新上线时，chunk 作为派生检索数据也需要同步恢复可用，
+     * 避免文档状态已发布但 chunk 级全文检索、向量检索或混合检索仍然过滤掉该内容。</p>
+     *
+     * <p>如果历史切片不存在，则直接重建切片，保证重新上线后的文档可以参与检索。</p>
+     *
+     * @param document 知识文档实体
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void onlineDocumentChunks(KnowledgeDocument document) {
+        validateDocument(document);
+
+        List<KnowledgeDocumentChunk> existChunks = listChunksByDocumentId(document.getId());
+        if (CollectionUtils.isEmpty(existChunks)) {
+            rebuildDocumentChunks(document);
+            log.info("知识文档无历史切片，已通过重建切片完成上线，documentId={}", document.getId());
+            return;
+        }
+
+        KnowledgeDocumentChunk updateEntity = new KnowledgeDocumentChunk()
+                .setStatus(KnowledgeChunkStatusConstants.ACTIVE)
+                .setUpdatedAt(LocalDateTime.now());
+
+        LambdaUpdateWrapper<KnowledgeDocumentChunk> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(KnowledgeDocumentChunk::getDocumentId, document.getId())
+                .eq(KnowledgeDocumentChunk::getStatus, KnowledgeChunkStatusConstants.OFFLINE);
+
+        int rows = baseMapper.update(updateEntity, updateWrapper);
+
+        List<KnowledgeDocumentChunk> latestChunks = listChunksByDocumentId(document.getId());
+        syncChunksToSearchIndex(document, latestChunks);
+
+        log.info("上线知识文档切片完成，documentId={}, affectedRows={}", document.getId(), rows);
+    }
+
     /**
      * 下线知识文档切片。
      *

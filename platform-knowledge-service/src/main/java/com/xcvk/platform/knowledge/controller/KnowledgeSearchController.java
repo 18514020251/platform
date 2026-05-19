@@ -1,6 +1,9 @@
 package com.xcvk.platform.knowledge.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
+import com.xcvk.platform.auth.starter.constant.PlatformRoleConstants;
 import com.xcvk.platform.common.domain.PageResult;
 import com.xcvk.platform.common.domain.Result;
 import com.xcvk.platform.knowledge.model.query.KnowledgeDocumentSearchQuery;
@@ -39,6 +42,7 @@ public class KnowledgeSearchController {
      */
     @GetMapping("/search")
     @SaCheckLogin
+    @SaCheckRole(value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT}, mode = SaMode.OR)
     @AccessLog(value = "ES 搜索知识文档列表", recordArgs = false, recordResult = false)
     @Operation(summary = "ES 搜索知识文档列表", description = "基于 Elasticsearch 搜索知识库文档")
     public Result<PageResult<KnowledgeDocumentSearchItemVO>> searchDocuments(

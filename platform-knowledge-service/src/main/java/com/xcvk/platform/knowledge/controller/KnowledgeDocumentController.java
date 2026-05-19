@@ -6,6 +6,7 @@ import com.xcvk.platform.auth.starter.util.SaTokenSessionUtils;
 import com.xcvk.platform.common.domain.Result;
 import com.xcvk.platform.knowledge.model.dto.CreateKnowledgeDocumentRequest;
 import com.xcvk.platform.knowledge.model.dto.UpdateKnowledgeDocumentRequest;
+import com.xcvk.platform.knowledge.model.vo.KnowledgeDocumentDetailVO;
 import com.xcvk.platform.knowledge.service.KnowledgeDocumentService;
 import com.xcvk.platform.log.starter.annotation.AccessLog;
 import com.xcvk.platform.auth.starter.constant.PlatformRoleConstants;
@@ -44,6 +45,15 @@ public class KnowledgeDocumentController {
         return Result.success(knowledgeDocumentService.createDocument(identity, request));
     }
 
+    @GetMapping("/{documentId}")
+    @SaCheckLogin
+    @SaCheckRole(value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT}, mode = SaMode.OR)
+    @AccessLog(value = "查询知识文档详情", recordArgs = false, recordResult = false)
+    @Operation(summary = "查询知识文档详情", description = "查询知识库文档详情")
+    public Result<KnowledgeDocumentDetailVO> detail(@PathVariable("documentId") Long documentId) {
+        return Result.success(knowledgeDocumentService.getDocumentDetail(documentId));
+    }
+
     @PutMapping("/{id}")
     @SaCheckLogin
     @SaCheckRole(value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT}, mode = SaMode.OR)
@@ -53,6 +63,17 @@ public class KnowledgeDocumentController {
                             @Valid @RequestBody UpdateKnowledgeDocumentRequest request) {
         CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
         knowledgeDocumentService.updateDocument(identity, id, request);
+        return Result.successVoid();
+    }
+
+    @PutMapping("/{documentId}/online")
+    @SaCheckLogin
+    @SaCheckRole(value = {PlatformRoleConstants.ADMIN, PlatformRoleConstants.SUPPORT}, mode = SaMode.OR)
+    @AccessLog(value = "上线知识文档", recordArgs = false, recordResult = false)
+    @Operation(summary = "上线知识文档", description = "将知识文档状态更新为已发布，并同步 Elasticsearch")
+    public Result<Void> onlineDocument(@PathVariable("documentId") Long documentId) {
+        CurrentLoginIdentity identity = saTokenSessionUtils.getCurrentLoginIdentity();
+        knowledgeDocumentService.onlineDocument(identity, documentId);
         return Result.successVoid();
     }
 
