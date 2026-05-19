@@ -45,11 +45,19 @@ public class KnowledgeGapTicketDedupServiceImpl implements KnowledgeGapTicketDed
 
     @Override
     public Optional<AiKnowledgeGapTicket> findByNormalizedQuestion(KnowledgeGapTicketDecision decision) {
-        if (decision == null || !StringUtils.hasText(decision.normalizedQuestion())) {
+        if (decision == null) {
             return Optional.empty();
         }
 
-        String hash = hashQuestion(decision.normalizedQuestion());
+        String dedupText = StringUtils.hasText(decision.dedupKey())
+                ? decision.dedupKey()
+                : decision.normalizedQuestion();
+
+        if (!StringUtils.hasText(dedupText)) {
+            return Optional.empty();
+        }
+
+        String hash = hashQuestion(dedupText);
 
         AiKnowledgeGapTicket record = knowledgeGapTicketMapper.selectOne(
                 new LambdaQueryWrapper<AiKnowledgeGapTicket>()
@@ -70,12 +78,16 @@ public class KnowledgeGapTicketDedupServiceImpl implements KnowledgeGapTicketDed
             return;
         }
 
+        String dedupText = StringUtils.hasText(decision.dedupKey())
+                ? decision.dedupKey()
+                : decision.normalizedQuestion();
+
         AiKnowledgeGapTicket record = new AiKnowledgeGapTicket()
                 .setId(idGenerator.nextId())
                 .setRawQuestion(rawQuestion)
                 .setRawQuestionHash(hashQuestion(rawQuestion))
                 .setNormalizedQuestion(decision.normalizedQuestion())
-                .setNormalizedQuestionHash(hashQuestion(decision.normalizedQuestion()))
+                .setNormalizedQuestionHash(hashQuestion(dedupText))
                 .setTicketId(ticket.ticketId())
                 .setTicketNo(ticket.ticketNo())
                 .setTicketStatus(ticket.status())
@@ -136,13 +148,36 @@ public class KnowledgeGapTicketDedupServiceImpl implements KnowledgeGapTicketDed
             return "";
         }
 
-        return question
+        String normalized = question
                 .trim()
-                .toLowerCase()
+                .toLowerCase();
+
+        // 统一中英文标点、空白
+        normalized = normalized
                 .replaceAll("\\s+", "")
-                .replace("？", "?")
-                .replace("，", ",")
-                .replace("。", ".")
-                .replace("！", "!");
+                .replaceAll("[，。！？、,.!?；;：:（）()【】\\[\\]「」“”\"'`]", "");
+
+        // 去掉对语义影响很小、但容易导致 hash 不一致的虚词
+        normalized = normalized
+                .replace("的", "")
+                .replace("了", "")
+                .replace("一下", "")
+                .replace("请问", "")
+                .replace("请", "");
+
+        // 统一常见表达
+        normalized = normalized
+                .replace("请提供", "")
+                .replace("请告知", "")
+                .replace("帮我看下", "")
+                .replace("帮忙看下", "")
+                .replace("这种情况应该走什么内部处理流程", "处理流程")
+                .replace("这种情况应该走什么处理流程", "处理流程")
+                .replace("内部处理流程", "处理流程")
+                .replace("内部故障处理或报修流程", "处理流程")
+                .replace("处理流程与报修方式", "处理流程")
+                .replace("处理流程和报修方式", "处理流程");
+
+        return normalized;
     }
 }

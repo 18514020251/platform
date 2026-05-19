@@ -147,6 +147,11 @@ public class KnowledgeGapTicketDecider {
 
         String normalizedQuestion = safeText(decision.normalizedQuestion(), question);
 
+        String dedupKey = safeText(
+                decision.dedupKey(),
+                buildDefaultDedupKey(normalizedQuestion)
+        );
+
         String ticketTypeCode = normalizeTicketType(
                 decision.ticketTypeCode(),
                 question + " " + normalizedQuestion
@@ -179,6 +184,7 @@ public class KnowledgeGapTicketDecider {
                 true,
                 confidence,
                 normalizedQuestion,
+                dedupKey,
                 ticketTypeCode,
                 title,
                 content,
@@ -195,9 +201,34 @@ public class KnowledgeGapTicketDecider {
                 "",
                 "",
                 "",
+                "",
                 DEFAULT_PRIORITY,
                 reason
         );
+    }
+
+    private String buildDefaultDedupKey(String normalizedQuestion) {
+        if (!StringUtils.hasText(normalizedQuestion)) {
+            return "";
+        }
+
+        return normalizedQuestion
+                .trim()
+                .toLowerCase()
+                .replaceAll("\\s+", "")
+                .replaceAll("[，。！？、,.!?；;：:（）()【】\\[\\]「」“”\"'`]", "")
+                .replace("的", "")
+                .replace("了", "")
+                .replace("请问", "")
+                .replace("请", "")
+                .replace("如何", "")
+                .replace("怎么", "")
+                .replace("怎么办", "")
+                .replace("怎么处理", "")
+                .replace("处理流程", "")
+                .replace("内部处理流程", "")
+                .replace("请提供", "")
+                .replace("请告知", "");
     }
 
     private String buildDefaultContent(String rawQuestion,

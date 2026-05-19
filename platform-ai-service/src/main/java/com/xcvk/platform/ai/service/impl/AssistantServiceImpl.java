@@ -33,6 +33,8 @@ import com.xcvk.platform.id.generator.SnowflakeIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 import static com.xcvk.platform.ai.constant.AssistantConstants.INTENT_TICKET_CREATE;
@@ -214,10 +216,12 @@ public class AssistantServiceImpl implements AssistantService {
         }
 
         Optional<AiKnowledgeGapTicket> rawDuplicate =
-                traceRecorder.executeNode(
-                        RagTraceNodeType.KNOWLEDGE_GAP_TICKET_DEDUP_CHECK,
-                        () -> knowledgeGapTicketDedupService.findByRawQuestion(request.question())
-                );
+                knowledgeGapTicketDedupService.findByRawQuestion(request.question());
+
+        traceRecorder.executeNode(
+                RagTraceNodeType.KNOWLEDGE_GAP_TICKET_DEDUP_CHECK,
+                () -> buildDedupTracePayload("RAW_QUESTION", rawDuplicate)
+        );
 
         if (rawDuplicate.isPresent()) {
             knowledgeGapTicketDedupService.increaseHitCount(rawDuplicate.get().getId());
@@ -237,10 +241,12 @@ public class AssistantServiceImpl implements AssistantService {
                 );
 
         Optional<AiKnowledgeGapTicket> normalizedDuplicate =
-                traceRecorder.executeNode(
-                        RagTraceNodeType.KNOWLEDGE_GAP_TICKET_DEDUP_CHECK,
-                        () -> knowledgeGapTicketDedupService.findByNormalizedQuestion(gapDecision)
-                );
+                knowledgeGapTicketDedupService.findByNormalizedQuestion(gapDecision);
+
+        traceRecorder.executeNode(
+                RagTraceNodeType.KNOWLEDGE_GAP_TICKET_DEDUP_CHECK,
+                () -> buildDedupTracePayload("NORMALIZED_QUESTION", normalizedDuplicate)
+        );
 
         if (normalizedDuplicate.isPresent()) {
             knowledgeGapTicketDedupService.increaseHitCount(normalizedDuplicate.get().getId());
@@ -249,6 +255,8 @@ public class AssistantServiceImpl implements AssistantService {
 
             return buildDuplicateTicketResponse(normalizedDuplicate.get());
         }
+
+
 
         /*
          * 后端根据 LLM 决策结果判断是否允许创建工单。
@@ -298,6 +306,27 @@ public class AssistantServiceImpl implements AssistantService {
         }
 
         return ticketResponse;
+    }
+
+    private Map<String, Object> buildDedupTracePayload(String stage,
+                                                       Optional<AiKnowledgeGapTicket> duplicate) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+
+        payload.put("stage", stage);
+        payload.put("duplicate", duplicate.isPresent());
+
+        if (duplicate.isPresent()) {
+            AiKnowledgeGapTicket record = duplicate.get();
+
+            payload.put("recordId", record.getId());
+            payload.put("ticketId", record.getTicketId());
+            payload.put("ticketNo", record.getTicketNo());
+            payload.put("ticketStatus", record.getTicketStatus());
+            payload.put("ticketTitle", record.getTicketTitle());
+            payload.put("hitCount", record.getHitCount());
+        }
+
+        return payload;
     }
 
     private AssistantChatResponse buildDuplicateTicketResponse(AiKnowledgeGapTicket record) {

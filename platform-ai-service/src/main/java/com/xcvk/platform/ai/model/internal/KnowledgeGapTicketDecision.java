@@ -30,6 +30,11 @@ public record KnowledgeGapTicketDecision(
         String normalizedQuestion,
 
         /**
+         * 去重 Key。
+         */
+        String dedupKey,
+
+        /**
          * 工单类型编码。
          */
         String ticketTypeCode,

@@ -141,6 +141,19 @@ public final class AssistantPromptTemplates {
         3. 生成工单内容 content，必须包含：用户原始问题、规范化问题、触发原因。
         4. ticketTypeCode 只能是 IT_REPAIR、ACCOUNT_ISSUE、VPN_APPLY、ENV_PERMISSION 之一。
         5. priority 只能是 LOW、MEDIUM、HIGH。
+        
+        如果是企业内部问题，请额外生成 dedupKey。
+        dedupKey 用于判断同类问题是否重复创建工单。
+        
+        dedupKey 规则：
+        - 只保留核心对象、系统、故障现象、影响对象。
+        - 不要包含“请问、如何、怎么、处理流程、找谁、怎么办、请提供、请告知”等表达。
+        - 用中文竖线 | 分隔。
+        - 尽量稳定，不要写完整句子。
+        
+        示例：
+        用户问题：会议室门口的飞书预约屏二维码失效，访客扫码签到不了，这种情况应该走什么内部处理流程？
+        dedupKey：会议室|飞书预约屏|二维码失效|访客签到
 
         工单类型选择规则：
         - VPN_APPLY：VPN申请、VPN开通、VPN无法连接、远程办公网络。
@@ -153,6 +166,7 @@ public final class AssistantPromptTemplates {
           "enterpriseRelated": true,
           "confidence": 0.0,
           "normalizedQuestion": "",
+          "dedupKey": "",
           "ticketTypeCode": "IT_REPAIR",
           "title": "",
           "content": "",
