@@ -164,7 +164,7 @@ public class RagChatServiceImpl implements RagChatService {
             Boolean lowRelevance =
                     ragTraceRecorder.executeNode(
                             RagTraceNodeType.RELEVANCE_CHECK,
-                            () -> relevanceEvaluator.isLowRelevance(contexts)
+                            () -> relevanceEvaluator.isLowRelevance(originalQuestion, contexts)
                     );
 
             if (lowRelevance) {
@@ -264,7 +264,7 @@ public class RagChatServiceImpl implements RagChatService {
             return emitter;
         }
 
-        if (relevanceEvaluator.isLowRelevance(contexts)) {
+        if (relevanceEvaluator.isLowRelevance(originalQuestion, contexts)) {
 
             sseEmitterSender.sendRejectEvents(
                     emitter,

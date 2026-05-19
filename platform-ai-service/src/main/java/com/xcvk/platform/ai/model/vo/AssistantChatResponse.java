@@ -62,6 +62,17 @@ public record AssistantChatResponse(
         );
     }
 
+    public static AssistantChatResponse ticketDuplicate(String answer, AssistantTicketVO ticket) {
+        return new AssistantChatResponse(
+                "TICKET_DUPLICATE",
+                answer,
+                false,
+                "createTicket",
+                ticket,
+                null
+        );
+    }
+
     public static AssistantChatResponse ticketCreated(String answer, AssistantTicketVO ticket) {
         return new AssistantChatResponse(
                 "TICKET_CREATE",

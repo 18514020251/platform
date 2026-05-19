@@ -115,3 +115,41 @@ CREATE TABLE IF NOT EXISTS rag_eval_case_result
 
 ALTER TABLE rag_eval_run
     ADD COLUMN retrieval_mode varchar(32) DEFAULT 'ENHANCED_RRF' COMMENT '检索策略';
+
+
+CREATE TABLE IF NOT EXISTS ai_knowledge_gap_ticket
+(
+    id                        BIGINT        NOT NULL COMMENT '主键ID',
+
+    raw_question              VARCHAR(1000) NOT NULL COMMENT '用户原始问题',
+    raw_question_hash         VARCHAR(64)   NOT NULL COMMENT '原始问题Hash',
+
+    normalized_question       VARCHAR(1000) NULL COMMENT 'LLM规范化后的问题',
+    normalized_question_hash  VARCHAR(64)   NULL COMMENT '规范化问题Hash',
+
+    ticket_id                 BIGINT        NOT NULL COMMENT '关联工单ID',
+    ticket_no                 VARCHAR(64)   NOT NULL COMMENT '关联工单编号',
+    ticket_status             VARCHAR(32)   NOT NULL COMMENT '工单状态快照',
+
+    ticket_type_code          VARCHAR(64)   NULL COMMENT '工单类型编码',
+    ticket_title              VARCHAR(200)  NULL COMMENT '工单标题',
+
+    created_by                BIGINT        NOT NULL COMMENT '首次触发用户ID',
+    hit_count                 INT           NOT NULL DEFAULT 1 COMMENT '重复命中次数',
+
+    created_at                DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at                DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    PRIMARY KEY (id),
+
+    UNIQUE KEY uk_raw_question_hash (raw_question_hash),
+    UNIQUE KEY uk_normalized_question_hash (normalized_question_hash),
+
+    KEY idx_ticket_id (ticket_id),
+    KEY idx_ticket_no (ticket_no),
+    KEY idx_created_by (created_by),
+    KEY idx_created_at (created_at)
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_unicode_ci
+    COMMENT = 'AI知识缺口转工单去重表';

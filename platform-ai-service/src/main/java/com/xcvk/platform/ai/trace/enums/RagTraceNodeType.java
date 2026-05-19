@@ -63,6 +63,21 @@ public enum RagTraceNodeType {
     REWRITE_RETRIEVAL,
 
     /**
+     * 知识缺口转工单决策
+     */
+    KNOWLEDGE_GAP_TICKET_DECIDE,
+
+    /**
+     * 知识缺口重复工单检测
+     */
+    KNOWLEDGE_GAP_TICKET_DEDUP_CHECK,
+
+    /**
+     * 知识缺口创建工单
+     */
+    KNOWLEDGE_GAP_CREATE_TICKET,
+
+    /**
      * 创建工单确认检查
      */
     TOOL_CREATE_TICKET_CONFIRM_CHECK,
@@ -77,7 +92,6 @@ public enum RagTraceNodeType {
      * 创建工单调用 workflow-service
      */
     TOOL_CREATE_TICKET_CALL_WORKFLOW,
-
 
 
     /**

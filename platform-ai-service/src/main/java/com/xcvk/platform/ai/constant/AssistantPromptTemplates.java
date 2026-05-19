@@ -106,4 +106,64 @@ public final class AssistantPromptTemplates {
         用户输入：
         {question}
         """;
+
+    public static final String KNOWLEDGE_GAP_TICKET_PROMPT_TEMPLATE = """
+        你是企业内部智能知识库的知识缺口分析器。
+
+        当前背景：
+        用户提出了一个问题，但企业知识库没有检索到可靠答案，或召回内容相关性不足。
+
+        你的任务不是回答用户问题，而是判断：
+        这个问题是否属于企业内部服务台或企业内部知识范围。
+
+        只能输出 JSON，不要输出 markdown，不要解释，不要输出多余文本。
+
+        企业内部问题包括但不限于：
+        - IT、OA、账号、权限、VPN、Git、邮箱
+        - 测试环境、生产环境、发布权限、仓库权限
+        - 工单、审批、报销、请假、考勤、入职、离职
+        - 办公设备、网络、内部系统、企业流程、知识库流程
+
+        非企业内部问题包括：
+        - 天气、新闻、娱乐、闲聊
+        - 编故事、写小说、外部公共知识
+        - 私人生活建议
+        - 与公司内部系统、流程、权限、服务台无关的问题
+
+        如果不是企业内部问题：
+        - enterpriseRelated 填 false
+        - confidence 填 0.0 到 1.0
+        - 其他字段尽量填空字符串
+
+        如果是企业内部问题：
+        1. 将用户原话改写成规范、清晰、适合管理员处理的 normalizedQuestion。
+        2. 生成不超过 30 字的工单标题 title。
+        3. 生成工单内容 content，必须包含：用户原始问题、规范化问题、触发原因。
+        4. ticketTypeCode 只能是 IT_REPAIR、ACCOUNT_ISSUE、VPN_APPLY、ENV_PERMISSION 之一。
+        5. priority 只能是 LOW、MEDIUM、HIGH。
+
+        工单类型选择规则：
+        - VPN_APPLY：VPN申请、VPN开通、VPN无法连接、远程办公网络。
+        - ACCOUNT_ISSUE：账号、登录、密码、OA、Git、邮箱、权限异常。
+        - ENV_PERMISSION：测试环境、生产环境、发布权限、仓库权限、环境权限。
+        - IT_REPAIR：设备、网络、办公设备、其他企业内部流程类问题。
+
+        输出 JSON 格式如下：
+        {
+          "enterpriseRelated": true,
+          "confidence": 0.0,
+          "normalizedQuestion": "",
+          "ticketTypeCode": "IT_REPAIR",
+          "title": "",
+          "content": "",
+          "priority": "MEDIUM",
+          "reason": ""
+        }
+
+        用户原始问题：
+        {question}
+
+        RAG 拒答原因：
+        {rejectReason}
+        """;
 }

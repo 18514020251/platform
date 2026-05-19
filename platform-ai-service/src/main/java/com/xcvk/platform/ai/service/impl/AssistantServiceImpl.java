@@ -5,16 +5,20 @@ import com.xcvk.platform.ai.assembler.AssistantTicketAssembler;
 import com.xcvk.platform.ai.model.dto.AssistantChatRequest;
 import com.xcvk.platform.ai.model.dto.RagChatRequest;
 import com.xcvk.platform.ai.model.entity.AiAgentExecutionLog;
+import com.xcvk.platform.ai.model.entity.AiKnowledgeGapTicket;
 import com.xcvk.platform.ai.model.internal.AssistantIntentDecision;
+import com.xcvk.platform.ai.model.internal.KnowledgeGapTicketDecision;
 import com.xcvk.platform.ai.model.internal.TicketScopeValidation;
 import com.xcvk.platform.ai.model.vo.AssistantChatResponse;
 import com.xcvk.platform.ai.model.vo.AssistantTicketVO;
 import com.xcvk.platform.ai.model.vo.RagChatResponse;
 import com.xcvk.platform.ai.service.AgentExecutionLogService;
 import com.xcvk.platform.ai.service.AssistantService;
+import com.xcvk.platform.ai.service.KnowledgeGapTicketDedupService;
 import com.xcvk.platform.ai.service.RagChatService;
 import com.xcvk.platform.ai.support.AssistantIntentClassifier;
 import com.xcvk.platform.ai.support.AssistantTicketScopeValidator;
+import com.xcvk.platform.ai.support.KnowledgeGapTicketDecider;
 import com.xcvk.platform.ai.tool.CreateTicketTool;
 import com.xcvk.platform.ai.tool.QueryTicketTool;
 import com.xcvk.platform.ai.trace.context.RagTraceHolder;
@@ -28,6 +32,8 @@ import com.xcvk.platform.common.util.BizAssert;
 import com.xcvk.platform.id.generator.SnowflakeIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 import static com.xcvk.platform.ai.constant.AssistantConstants.INTENT_TICKET_CREATE;
 import static com.xcvk.platform.ai.constant.AssistantConstants.INTENT_TICKET_QUERY;
@@ -56,9 +62,13 @@ public class AssistantServiceImpl implements AssistantService {
 
     private final AssistantTicketScopeValidator ticketScopeValidator;
 
+    private final KnowledgeGapTicketDecider knowledgeGapTicketDecider;
+
     private final CreateTicketTool createTicketTool;
 
     private final QueryTicketTool queryTicketTool;
+
+    private final KnowledgeGapTicketDedupService knowledgeGapTicketDedupService;
 
     private final AssistantLogAssembler logAssembler;
 
@@ -151,7 +161,7 @@ public class AssistantServiceImpl implements AssistantService {
 
         return traceRecorder.executeNode(
                 RagTraceNodeType.KNOWLEDGE_QA,
-                () -> handleKnowledgeQa(request, executionLog)
+                () -> handleKnowledgeQa(identity, request, executionLog)
         );
     }
 
@@ -175,10 +185,18 @@ public class AssistantServiceImpl implements AssistantService {
 
     /**
      * 处理知识问答。
+     *
+     * <p>
+     * MVP 新增逻辑：
+     * 如果 RAG 因无上下文或低相关性拒答，
+     * 则进入“知识缺口转工单”流程。
+     * </p>
      */
-    private AssistantChatResponse handleKnowledgeQa(AssistantChatRequest request,
+    private AssistantChatResponse handleKnowledgeQa(CurrentLoginIdentity identity,
+                                                    AssistantChatRequest request,
                                                     AiAgentExecutionLog executionLog) {
 
+        RagTraceRecorder traceRecorder = new RagTraceRecorder(RagTraceHolder.get());
 
         RagChatResponse ragResponse =
                 ragChatService.chat(
@@ -190,9 +208,120 @@ public class AssistantServiceImpl implements AssistantService {
                         )
                 );
 
-        logAssembler.markKnowledgeQaSuccess(executionLog);
+        if (!knowledgeGapTicketDecider.canHandle(ragResponse)) {
+            logAssembler.markKnowledgeQaSuccess(executionLog);
+            return AssistantChatResponse.rag(ragResponse.answer(), ragResponse);
+        }
 
-        return AssistantChatResponse.rag(ragResponse.answer(), ragResponse);
+        Optional<AiKnowledgeGapTicket> rawDuplicate =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.KNOWLEDGE_GAP_TICKET_DEDUP_CHECK,
+                        () -> knowledgeGapTicketDedupService.findByRawQuestion(request.question())
+                );
+
+        if (rawDuplicate.isPresent()) {
+            knowledgeGapTicketDedupService.increaseHitCount(rawDuplicate.get().getId());
+
+            logAssembler.markKnowledgeQaSuccess(executionLog);
+
+            return buildDuplicateTicketResponse(rawDuplicate.get());
+        }
+
+        /*
+         * 调用 LLM 判断用户原话是否属于企业内部知识缺口。
+         */
+        KnowledgeGapTicketDecision gapDecision =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.KNOWLEDGE_GAP_TICKET_DECIDE,
+                        () -> knowledgeGapTicketDecider.decide(request.question(), ragResponse)
+                );
+
+        Optional<AiKnowledgeGapTicket> normalizedDuplicate =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.KNOWLEDGE_GAP_TICKET_DEDUP_CHECK,
+                        () -> knowledgeGapTicketDedupService.findByNormalizedQuestion(gapDecision)
+                );
+
+        if (normalizedDuplicate.isPresent()) {
+            knowledgeGapTicketDedupService.increaseHitCount(normalizedDuplicate.get().getId());
+
+            logAssembler.markKnowledgeQaSuccess(executionLog);
+
+            return buildDuplicateTicketResponse(normalizedDuplicate.get());
+        }
+
+        /*
+         * 后端根据 LLM 决策结果判断是否允许创建工单。
+         *
+         * 如果不是企业内部问题，或者置信度不足，就返回 RAG 原拒答。
+         */
+        if (!knowledgeGapTicketDecider.shouldCreateTicket(gapDecision)) {
+            logAssembler.markKnowledgeQaSuccess(executionLog);
+            return AssistantChatResponse.rag(ragResponse.answer(), ragResponse);
+        }
+
+        Boolean duplicateTicketExists =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.KNOWLEDGE_GAP_TICKET_DEDUP_CHECK,
+                        () -> knowledgeGapTicketDecider.duplicateTicketExists(
+                                request.question(),
+                                gapDecision
+                        )
+                );
+
+        if (Boolean.TRUE.equals(duplicateTicketExists)) {
+            logAssembler.markKnowledgeQaSuccess(executionLog);
+            return AssistantChatResponse.rag(ragResponse.answer(), ragResponse);
+        }
+
+        /*
+         * 第四步：
+         * 将知识缺口决策转成已有的 TICKET_CREATE 意图，
+         * 然后复用原来的 handleTicketCreate。
+         */
+        AssistantIntentDecision ticketDecision =
+                knowledgeGapTicketDecider.toAssistantIntentDecision(gapDecision);
+
+        AssistantChatResponse ticketResponse =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.KNOWLEDGE_GAP_CREATE_TICKET,
+                        () -> handleTicketCreate(identity, request, ticketDecision, executionLog)
+                );
+
+        if (ticketResponse.ticket() != null) {
+            knowledgeGapTicketDedupService.recordCreatedTicket(
+                    identity.userId(),
+                    request.question(),
+                    gapDecision,
+                    ticketResponse.ticket()
+            );
+        }
+
+        return ticketResponse;
+    }
+
+    private AssistantChatResponse buildDuplicateTicketResponse(AiKnowledgeGapTicket record) {
+        AssistantTicketVO ticket = new AssistantTicketVO(
+                record.getTicketId(),
+                record.getTicketNo(),
+                record.getTicketStatus(),
+                record.getTicketTypeCode(),
+                record.getTicketTitle()
+        );
+
+        String answer = """
+            这个问题已经存在相似工单，无需重复创建。
+
+            已有关联工单：%s
+            当前状态：%s
+            工单标题：%s
+            """.formatted(
+                record.getTicketNo(),
+                record.getTicketStatus(),
+                record.getTicketTitle()
+        );
+
+        return AssistantChatResponse.ticketDuplicate(answer, ticket);
     }
 
     /**
