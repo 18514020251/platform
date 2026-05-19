@@ -74,9 +74,15 @@ public class RagChatServiceImpl implements RagChatService {
     @Override
     public RagChatResponse chat(RagChatRequest request) {
 
-        RagTraceContext traceContext = new RagTraceContext();
+        RagTraceContext traceContext = RagTraceHolder.get();
 
-        try {
+        boolean traceCreatedHere = false;
+
+        if (traceContext == null) {
+
+            traceCreatedHere = true;
+
+            traceContext = new RagTraceContext();
 
             traceContext.setTraceId(
                     String.valueOf(idGenerator.nextId())
@@ -95,6 +101,9 @@ public class RagChatServiceImpl implements RagChatService {
             );
 
             RagTraceHolder.set(traceContext);
+        }
+
+        try {
 
             RagTraceRecorder ragTraceRecorder = new RagTraceRecorder(traceContext);
 
@@ -107,7 +116,6 @@ public class RagChatServiceImpl implements RagChatService {
                             RagTraceNodeType.QUESTION_REWRITE,
                             () -> questionRewriteService.rewriteQuestion(originalQuestion)
                     );
-
 
             List<KnowledgeRagContextItem> originalContexts =
                     ragTraceRecorder.executeNode(
@@ -139,7 +147,6 @@ public class RagChatServiceImpl implements RagChatService {
 
             List<RagCitation> citations =
                     contextRetrievalService.buildCitations(contexts);
-
 
             if (contexts.isEmpty()) {
 
@@ -189,15 +196,6 @@ public class RagChatServiceImpl implements RagChatService {
                             () -> chatModel.chat(prompt)
                     );
 
-            // 注释部分代码仅用于测试异常情况链路追踪效果
-            //String answer =
-            //        ragTraceRecorder.executeNode(
-            //                RagTraceNodeType.LLM_GENERATE,
-            //                () -> {
-            //                    throw new RuntimeException("test llm error");
-            //                }
-            //        );
-
             traceContext.setStatus(SUCCESS);
 
             traceContext.setFinalAnswer(answer);
@@ -212,18 +210,21 @@ public class RagChatServiceImpl implements RagChatService {
 
         } finally {
 
-            traceContext.setEndTime(
-                    System.currentTimeMillis()
-            );
+            if (traceCreatedHere) {
 
-            traceContext.setTotalLatencyMs(
-                    traceContext.getEndTime()
-                            - traceContext.getStartTime()
-            );
+                traceContext.setEndTime(
+                        System.currentTimeMillis()
+                );
 
-            ragTraceService.save(traceContext);
+                traceContext.setTotalLatencyMs(
+                        traceContext.getEndTime()
+                                - traceContext.getStartTime()
+                );
 
-            RagTraceHolder.clear();
+                ragTraceService.save(traceContext);
+
+                RagTraceHolder.clear();
+            }
         }
     }
 

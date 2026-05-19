@@ -3,6 +3,9 @@ package com.xcvk.platform.ai.tool;
 import com.xcvk.platform.ai.assembler.AssistantLogAssembler;
 import com.xcvk.platform.ai.model.dto.AssistantChatRequest;
 import com.xcvk.platform.ai.model.entity.AiAgentExecutionLog;
+import com.xcvk.platform.ai.trace.context.RagTraceHolder;
+import com.xcvk.platform.ai.trace.enums.RagTraceNodeType;
+import com.xcvk.platform.ai.trace.recorder.RagTraceRecorder;
 import com.xcvk.platform.api.contract.workflow.client.WorkflowTicketClient;
 import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketItem;
 import com.xcvk.platform.api.contract.workflow.model.QueryAiTicketRequest;
@@ -61,18 +64,35 @@ public class QueryTicketTool {
     public String query(CurrentLoginIdentity identity,
                         AssistantChatRequest request,
                         AiAgentExecutionLog executionLog) {
-        QueryAiTicketRequest ticketRequest = buildQueryRequest(identity, request.question());
+
+        RagTraceRecorder traceRecorder = new RagTraceRecorder(RagTraceHolder.get());
+
+        QueryAiTicketRequest ticketRequest =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TOOL_QUERY_TICKET_REQUEST_BUILD,
+                        () -> buildQueryRequest(identity, request.question())
+                );
 
         logAssembler.markQueryTicketRequest(executionLog, ticketRequest);
 
         Result<QueryAiTicketResponse> ticketResult =
-                workflowTicketClient.queryTicketByAi(ticketRequest);
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TOOL_QUERY_TICKET_CALL_WORKFLOW,
+                        () -> workflowTicketClient.queryTicketByAi(ticketRequest)
+                );
 
-        QueryAiTicketResponse ticketResponse = unwrapQueryTicketResult(ticketResult);
+        QueryAiTicketResponse ticketResponse =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TOOL_QUERY_TICKET_UNWRAP_RESPONSE,
+                        () -> unwrapQueryTicketResult(ticketResult)
+                );
 
         logAssembler.markQueryTicketSuccess(executionLog, ticketResponse);
 
-        return buildAnswer(ticketResponse, ticketRequest);
+        return traceRecorder.executeNode(
+                RagTraceNodeType.TOOL_QUERY_TICKET_BUILD_ANSWER,
+                () -> buildAnswer(ticketResponse, ticketRequest)
+        );
     }
 
     private QueryAiTicketRequest buildQueryRequest(CurrentLoginIdentity identity, String question) {

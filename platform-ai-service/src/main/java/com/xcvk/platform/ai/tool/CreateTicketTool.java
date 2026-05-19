@@ -6,6 +6,9 @@ import com.xcvk.platform.ai.model.entity.AiAgentExecutionLog;
 import com.xcvk.platform.ai.model.internal.AssistantIntentDecision;
 import com.xcvk.platform.ai.model.vo.AssistantTicketVO;
 import com.xcvk.platform.ai.support.AssistantIdentityResolver;
+import com.xcvk.platform.ai.trace.context.RagTraceHolder;
+import com.xcvk.platform.ai.trace.enums.RagTraceNodeType;
+import com.xcvk.platform.ai.trace.recorder.RagTraceRecorder;
 import com.xcvk.platform.api.contract.workflow.client.WorkflowTicketClient;
 import com.xcvk.platform.api.contract.workflow.model.CreateAiTicketRequest;
 import com.xcvk.platform.api.contract.workflow.model.CreateAiTicketResponse;
@@ -54,35 +57,54 @@ public class CreateTicketTool {
                                     AssistantChatRequest request,
                                     AssistantIntentDecision decision,
                                     AiAgentExecutionLog executionLog) {
+
+        RagTraceRecorder traceRecorder = new RagTraceRecorder(RagTraceHolder.get());
+
         String ticketTypeCode = safeText(decision.ticketTypeCode(), DEFAULT_TICKET_TYPE);
         String title = safeText(decision.title(), buildDefaultTitle(request.question()));
         String content = safeText(decision.content(), request.question());
         String priority = safeText(decision.priority(), DEFAULT_PRIORITY);
         String sourceRef = SOURCE_REF_PREFIX + UUID.randomUUID();
 
-        CreateAiTicketRequest ticketRequest = new CreateAiTicketRequest(
-                identity.userId(),
-                identityResolver.resolveCreatorName(identity),
-                ticketTypeCode,
-                title,
-                content,
-                priority,
-                sourceRef
-        );
+        CreateAiTicketRequest ticketRequest =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TOOL_CREATE_TICKET_REQUEST_BUILD,
+                        () -> new CreateAiTicketRequest(
+                                identity.userId(),
+                                identityResolver.resolveCreatorName(identity),
+                                ticketTypeCode,
+                                title,
+                                content,
+                                priority,
+                                sourceRef
+                        )
+                );
 
         logAssembler.markCreateTicketRequest(executionLog, ticketRequest);
 
-        Result<CreateAiTicketResponse> ticketResult = workflowTicketClient.createTicketByAi(ticketRequest);
-        CreateAiTicketResponse ticketResponse = unwrapCreateTicketResult(ticketResult);
+        Result<CreateAiTicketResponse> ticketResult =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TOOL_CREATE_TICKET_CALL_WORKFLOW,
+                        () -> workflowTicketClient.createTicketByAi(ticketRequest)
+                );
+
+        CreateAiTicketResponse ticketResponse =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TOOL_CREATE_TICKET_UNWRAP_RESPONSE,
+                        () -> unwrapCreateTicketResult(ticketResult)
+                );
 
         logAssembler.markCreateTicketSuccess(executionLog, ticketResponse);
 
-        return new AssistantTicketVO(
-                ticketResponse.ticketId(),
-                ticketResponse.ticketNo(),
-                ticketResponse.status(),
-                ticketTypeCode,
-                title
+        return traceRecorder.executeNode(
+                RagTraceNodeType.TOOL_CREATE_TICKET_BUILD_RESULT,
+                () -> new AssistantTicketVO(
+                        ticketResponse.ticketId(),
+                        ticketResponse.ticketNo(),
+                        ticketResponse.status(),
+                        ticketTypeCode,
+                        title
+                )
         );
     }
 

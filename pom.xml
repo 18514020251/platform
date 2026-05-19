@@ -22,13 +22,10 @@
 
         <module>platform-common</module>
         <module>platform-api-contract</module>
-        <module>platform-mq-contract</module>
 
         <module>platform-common-starter</module>
         <module>platform-satoken-starter</module>
         <module>platform-redis-starter</module>
-        <module>platform-minio-starter</module>
-        <module>platform-mq-starter</module>
         <module>platform-id-starter</module>
         <module>platform-log-starter</module>
     </modules>
@@ -102,12 +99,6 @@
 
             <dependency>
                 <groupId>com.xcvk.platform</groupId>
-                <artifactId>platform-mq-contract</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.xcvk.platform</groupId>
                 <artifactId>platform-common-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -127,18 +118,6 @@
             <dependency>
                 <groupId>com.xcvk.platform</groupId>
                 <artifactId>platform-redis-starter</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.xcvk.platform</groupId>
-                <artifactId>platform-minio-starter</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.xcvk.platform</groupId>
-                <artifactId>platform-mq-starter</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

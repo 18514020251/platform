@@ -18,9 +18,14 @@ import com.xcvk.platform.ai.support.AssistantTicketScopeValidator;
 import com.xcvk.platform.ai.tool.CreateTicketTool;
 import com.xcvk.platform.ai.tool.QueryTicketTool;
 import com.xcvk.platform.ai.trace.context.RagTraceHolder;
+import com.xcvk.platform.ai.trace.enums.RagTraceNodeType;
+import com.xcvk.platform.ai.trace.model.RagTraceContext;
+import com.xcvk.platform.ai.trace.recorder.RagTraceRecorder;
+import com.xcvk.platform.ai.trace.service.RagTraceService;
 import com.xcvk.platform.auth.starter.model.CurrentLoginIdentity;
 import com.xcvk.platform.common.exception.ErrorCode;
 import com.xcvk.platform.common.util.BizAssert;
+import com.xcvk.platform.id.generator.SnowflakeIdGenerator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -41,6 +46,10 @@ import static com.xcvk.platform.ai.constant.AssistantConstants.INTENT_TICKET_QUE
 @RequiredArgsConstructor
 public class AssistantServiceImpl implements AssistantService {
 
+    private static final String SUCCESS = "SUCCESS";
+
+    private static final String FAILED = "FAILED";
+
     private final RagChatService ragChatService;
 
     private final AssistantIntentClassifier intentClassifier;
@@ -57,6 +66,10 @@ public class AssistantServiceImpl implements AssistantService {
 
     private final AgentExecutionLogService agentExecutionLogService;
 
+    private final SnowflakeIdGenerator idGenerator;
+
+    private final RagTraceService ragTraceService;
+
     @Override
     public AssistantChatResponse chat(CurrentLoginIdentity identity, AssistantChatRequest request) {
         validateCurrentLoginIdentity(identity);
@@ -64,18 +77,50 @@ public class AssistantServiceImpl implements AssistantService {
 
         AiAgentExecutionLog executionLog = logAssembler.buildBaseExecutionLog(identity, request);
 
+        RagTraceContext traceContext = new RagTraceContext();
+        traceContext.setTraceId(String.valueOf(idGenerator.nextId()));
+        traceContext.setQuestion(request.question());
+        traceContext.setStartTime(System.currentTimeMillis());
+        traceContext.setExecutionLogId(executionLog.getId());
+
+        RagTraceHolder.set(traceContext);
+
         try {
-            AssistantIntentDecision decision = intentClassifier.classify(request.question());
+            RagTraceRecorder traceRecorder = new RagTraceRecorder(traceContext);
+
+            AssistantIntentDecision decision =
+                    traceRecorder.executeNode(
+                            RagTraceNodeType.INTENT_CLASSIFY,
+                            () -> intentClassifier.classify(request.question())
+                    );
+
             logAssembler.fillIntentLog(executionLog, decision);
 
-            AssistantChatResponse response = dispatch(identity, request, decision, executionLog);
+            AssistantChatResponse response =
+                    traceRecorder.executeNode(
+                            RagTraceNodeType.ASSISTANT_DISPATCH,
+                            () -> dispatch(identity, request, decision, executionLog)
+                    );
+
+            traceContext.setStatus(SUCCESS);
+            traceContext.setFinalAnswer(response.answer());
 
             logAssembler.fillResponseLog(executionLog, response);
             return response;
         } catch (Exception ex) {
+            traceContext.setStatus(FAILED);
+
             logAssembler.markFailed(executionLog, ex);
             throw ex;
         } finally {
+            traceContext.setEndTime(System.currentTimeMillis());
+            traceContext.setTotalLatencyMs(
+                    traceContext.getEndTime() - traceContext.getStartTime()
+            );
+
+            ragTraceService.save(traceContext);
+            RagTraceHolder.clear();
+
             agentExecutionLogService.saveSafely(executionLog);
         }
     }
@@ -87,15 +132,27 @@ public class AssistantServiceImpl implements AssistantService {
                                            AssistantChatRequest request,
                                            AssistantIntentDecision decision,
                                            AiAgentExecutionLog executionLog) {
+
+        RagTraceRecorder traceRecorder = new RagTraceRecorder(RagTraceHolder.get());
+
         if (INTENT_TICKET_CREATE.equals(decision.intent())) {
-            return handleTicketCreate(identity, request, decision, executionLog);
+            return traceRecorder.executeNode(
+                    RagTraceNodeType.TOOL_CREATE_TICKET,
+                    () -> handleTicketCreate(identity, request, decision, executionLog)
+            );
         }
 
         if (INTENT_TICKET_QUERY.equals(decision.intent())) {
-            return handleTicketQuery(identity, request, executionLog);
+            return traceRecorder.executeNode(
+                    RagTraceNodeType.TOOL_QUERY_TICKET,
+                    () -> handleTicketQuery(identity, request, executionLog)
+            );
         }
 
-        return handleKnowledgeQa(request, executionLog);
+        return traceRecorder.executeNode(
+                RagTraceNodeType.KNOWLEDGE_QA,
+                () -> handleKnowledgeQa(request, executionLog)
+        );
     }
 
     /**
@@ -104,7 +161,14 @@ public class AssistantServiceImpl implements AssistantService {
     private AssistantChatResponse handleTicketQuery(CurrentLoginIdentity identity,
                                                     AssistantChatRequest request,
                                                     AiAgentExecutionLog executionLog) {
-        String answer = queryTicketTool.query(identity, request, executionLog);
+
+        RagTraceRecorder traceRecorder = new RagTraceRecorder(RagTraceHolder.get());
+
+        String answer =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TOOL_QUERY_TICKET_EXECUTE,
+                        () -> queryTicketTool.query(identity, request, executionLog)
+                );
 
         return AssistantChatResponse.ticketQueried(answer);
     }
@@ -138,21 +202,43 @@ public class AssistantServiceImpl implements AssistantService {
                                                      AssistantChatRequest request,
                                                      AssistantIntentDecision decision,
                                                      AiAgentExecutionLog executionLog) {
-        TicketScopeValidation validation = ticketScopeValidator.validate(request.question(), decision);
+
+        RagTraceRecorder traceRecorder = new RagTraceRecorder(RagTraceHolder.get());
+
+        TicketScopeValidation validation =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TICKET_SCOPE_VALIDATE,
+                        () -> ticketScopeValidator.validate(request.question(), decision)
+                );
 
         if (!validation.passed()) {
             logAssembler.markUnsupported(executionLog, validation.reason());
             return AssistantChatResponse.unsupported(validation.reason());
         }
 
-        if (!request.autoCreateTicketOrTrue()) {
+        Boolean autoCreateTicket =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TOOL_CREATE_TICKET_CONFIRM_CHECK,
+                        request::autoCreateTicketOrTrue
+                );
+
+        if (!autoCreateTicket) {
             logAssembler.markPendingConfirm(executionLog);
             return AssistantChatResponse.ticketPendingConfirm(
                     ticketAssembler.buildPendingConfirmAnswer(decision)
             );
         }
 
-        AssistantTicketVO ticket = createTicketTool.create(identity, request, decision, executionLog);
+        AssistantTicketVO ticket =
+                traceRecorder.executeNode(
+                        RagTraceNodeType.TOOL_CREATE_TICKET_EXECUTE,
+                        () -> createTicketTool.create(
+                                identity,
+                                request,
+                                decision,
+                                executionLog
+                        )
+                );
 
         return AssistantChatResponse.ticketCreated(
                 ticketAssembler.buildTicketCreatedAnswer(ticket),
