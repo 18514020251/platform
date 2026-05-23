@@ -39,6 +39,10 @@ public class AiEmbeddingConfiguration {
             throw new IllegalStateException("DashScope API Key 不能为空，请配置 platform.ai.embedding.dashscope.api-key");
         }
 
+        if (!StringUtils.hasText(dashScopeEmbeddingProperties.getModelName())) {
+            dashScopeEmbeddingProperties.setModelName("text-embedding-v3");
+        }
+
         log.info("""
         ================================================
         DashScope Embedding 配置

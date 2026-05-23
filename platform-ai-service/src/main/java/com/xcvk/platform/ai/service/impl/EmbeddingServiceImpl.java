@@ -60,8 +60,14 @@ public class EmbeddingServiceImpl implements EmbeddingService {
                 .map(Embedding::vectorAsList)
                 .toList();
 
+        String modelName = dashScopeEmbeddingProperties.getModelName();
+
+        if (!StringUtils.hasText(modelName)) {
+            modelName = "text-embedding-v3";
+        }
+
         return new EmbeddingResponse(
-                dashScopeEmbeddingProperties.getModelName(),
+                modelName,
                 embeddingModel.dimension(),
                 vectors
         );
